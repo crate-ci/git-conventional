@@ -1,0 +1,15 @@
+[package]
+name = "conventional-commit"
+version = "0.1.0"
+authors = ["Jean Mertz <helloworld@rustic.games>"]
+keywords = ["parser", "git", "conventional commit"]
+categories = ["parser-implementations"]
+description = "A parser library for the Conventional Commit specification."
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/rustic-games/conventional-commit"
+edition = "2018"
+
+[dependencies]
+unicode-segmentation = "1.3"
+itertools = "0.8"
