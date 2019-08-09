@@ -3,19 +3,23 @@
 [![Latest Crate Version](https://img.shields.io/crates/v/conventional-commit.svg?logo=rust&label=version&logoColor=white&colorB=brightgreen)](https://crates.io/crates/conventional-commit "The latest released version on crates.io.")
 [![Discord Chat](https://img.shields.io/discord/477552212156088320.svg?logo=discord&label=discord%20chat&logoColor=white)](https://discord.gg/Kc4qZWE "Ask a question or just enjoy your stay!")
 
+**Conventional Commit**
+
+<sup>A Rust parser library for the [Conventional Commit] spec.</sup>
+
+<br /><br />
+
+🚧&nbsp;&nbsp;&nbsp;&nbsp;_work in progress_&nbsp;&nbsp;&nbsp;&nbsp;🚧
+
+<br /><br />
 </div>
-<br />
 
-# Conventional Commit
 
-A Rust parser library for the [Conventional Commit] spec.
-
-## Work in Progress
-
-The parser does not 100% conform to the spec yet, and since the spec is still in
-beta, it is likely to still introduce some changes.
-
-Once the spec hits 1.0, and the parser is fully compliant, this library will be
-tagged with `v1.0.0` as well.
+- [x] Initial usable version
+- [ ] 100% compliant with [latest specification]
+- [ ] better test coverage
+- [ ] `1.0` and beyond…
 
 [conventional commit]: https://www.conventionalcommits.org
+[latest specification]: https://www.conventionalcommits.org/en/v1.0.0-beta.4/#specification
+
