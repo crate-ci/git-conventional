@@ -2,7 +2,7 @@
 name = "conventional-commit"
 version = "0.1.0"
 authors = ["Jean Mertz <helloworld@rustic.games>"]
-keywords = ["parser", "git", "conventional commit"]
+keywords = ["parser", "git", "conventional-commit", "commit", "conventional"]
 categories = ["parser-implementations"]
 description = "A parser library for the Conventional Commit specification."
 license = "MIT OR Apache-2.0"
