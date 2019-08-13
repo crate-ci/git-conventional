@@ -71,18 +71,51 @@
 
 use itertools::Itertools;
 use std::fmt;
+use std::ops::Deref;
 use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// A conventional commit.
 #[derive(Debug)]
 pub struct ConventionalCommit {
-    ty: String,
-    scope: Option<String>,
-    description: String,
-    body: Option<String>,
-    breaking_change: Option<String>,
+    ty: Type,
+    scope: Option<Scope>,
+    description: Description,
+    body: Option<Body>,
+    breaking_change: Option<BreakingChange>,
 }
+
+macro_rules! components {
+    ($($ty:ident),+) => (
+        $(
+            /// A component of the conventional commit.
+            #[derive(Debug, Clone, Eq, PartialEq, Hash)]
+            struct $ty(String);
+
+            impl Deref for $ty {
+                type Target = str;
+
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl fmt::Display for $ty {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    self.0.fmt(f)
+                }
+            }
+
+            impl<T: Into<String>> From<T> for $ty {
+                fn from(from: T) -> Self {
+                    Self(from.into())
+                }
+            }
+        )+
+    )
+}
+
+components![Type, Scope, Description, Body, BreakingChange];
 
 impl ConventionalCommit {
     /// The type of the commit.
@@ -92,7 +125,7 @@ impl ConventionalCommit {
 
     /// The optional scope of the commit.
     pub fn scope(&self) -> Option<&str> {
-        self.scope.as_ref().map(String::as_str).map(str::trim)
+        self.scope.as_ref().map(Deref::deref).map(str::trim)
     }
 
     /// The commit description.
@@ -103,14 +136,14 @@ impl ConventionalCommit {
     /// The commit body, containing a more detailed explanation of the commit
     /// changes.
     pub fn body(&self) -> Option<&str> {
-        self.body.as_ref().map(String::as_str).map(str::trim)
+        self.body.as_ref().map(Deref::deref).map(str::trim)
     }
 
     /// The text discussing any breaking changes.
     pub fn breaking_change(&self) -> Option<&str> {
         self.breaking_change
             .as_ref()
-            .map(String::as_str)
+            .map(Deref::deref)
             .map(str::trim)
     }
 }
@@ -152,17 +185,24 @@ impl FromStr for ConventionalCommit {
         let mut chars = UnicodeSegmentation::graphemes(s, true).peekable();
 
         // ex: "chore"
-        let ty: String = chars
+        let ty: Type = chars
             .peeking_take_while(|&c| c != "(" && c != ":")
-            .collect();
+            .collect::<String>()
+            .into();
         if ty.is_empty() {
             return Err(MissingType);
         }
 
         // ex: "changelog"
-        let mut scope: Option<String> = None;
+        let mut scope: Option<Scope> = None;
         if chars.peek() == Some(&"(") {
-            let _ = scope.replace(chars.peeking_take_while(|&c| c != ")").skip(1).collect());
+            let _ = scope.replace(
+                chars
+                    .peeking_take_while(|&c| c != ")")
+                    .skip(1)
+                    .collect::<String>()
+                    .into(),
+            );
             chars = chars.dropping(1);
         }
 
@@ -171,7 +211,10 @@ impl FromStr for ConventionalCommit {
         }
 
         // ex: "improve changelog readability"
-        let description: String = chars.peeking_take_while(|&c| c != "\n").collect();
+        let description: Description = chars
+            .peeking_take_while(|&c| c != "\n")
+            .collect::<String>()
+            .into();
         if description.is_empty() {
             return Err(MissingDescription);
         }
@@ -187,7 +230,7 @@ impl FromStr for ConventionalCommit {
                 .splitn(2, "BREAKING CHANGE:")
                 .map(|s| s.trim().to_owned());
 
-            (data.next(), data.next())
+            (data.next().map(Into::into), data.next().map(Into::into))
         };
 
         Ok(Self {
