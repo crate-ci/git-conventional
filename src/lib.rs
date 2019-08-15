@@ -5,7 +5,7 @@
 //! # Example
 //!
 //! ```rust
-//! use conventional_commit::{ConventionalCommit, Error};
+//! use conventional_commit::{Commit, Error};
 //! use std::str::FromStr;
 //!
 //! fn main() -> Result<(), Error> {
@@ -20,7 +20,7 @@
 //!     in your break.
 //!     ";
 //!
-//!     let commit = ConventionalCommit::from_str(message)?;
+//!     let commit = Commit::from_str(message)?;
 //!
 //!     assert_eq!(commit.type_(), "docs");
 //!     assert_eq!(commit.scope(), Some("example"));
@@ -81,7 +81,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 /// A conventional commit.
 #[derive(Debug)]
-pub struct ConventionalCommit {
+pub struct Commit {
     ty: Type,
     scope: Option<Scope>,
     description: Description,
@@ -121,7 +121,7 @@ macro_rules! components {
 
 components![Type, Scope, Description, Body, BreakingChange];
 
-impl ConventionalCommit {
+impl Commit {
     /// The type of the commit.
     pub fn type_(&self) -> &str {
         self.ty.trim()
@@ -152,7 +152,7 @@ impl ConventionalCommit {
     }
 }
 
-impl fmt::Display for ConventionalCommit {
+impl fmt::Display for Commit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.type_())?;
 
@@ -174,7 +174,7 @@ impl fmt::Display for ConventionalCommit {
     }
 }
 
-impl FromStr for ConventionalCommit {
+impl FromStr for Commit {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn test_valid_simple_commit() {
-        let commit = ConventionalCommit::from_str("my type(my scope): hello world").unwrap();
+        let commit = Commit::from_str("my type(my scope): hello world").unwrap();
 
         assert_eq!("my type", commit.type_());
         assert_eq!(Some("my scope"), commit.scope());
@@ -270,7 +270,7 @@ mod tests {
                       \n
                       BREAKING CHANGE: Just kidding!";
 
-        let commit = ConventionalCommit::from_str(commit).unwrap();
+        let commit = Commit::from_str(commit).unwrap();
 
         assert_eq!("chore", commit.type_());
         assert_eq!(None, commit.scope());
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_missing_type() {
-        let err = ConventionalCommit::from_str("").unwrap_err();
+        let err = Commit::from_str("").unwrap_err();
 
         assert_eq!(Error::MissingType, err);
     }
