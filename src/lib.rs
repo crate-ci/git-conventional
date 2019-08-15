@@ -5,7 +5,7 @@
 //! # Example
 //!
 //! ```rust
-//! use conventional_commit::{Commit, Error};
+//! use conventional::{Commit, Error};
 //! use std::str::FromStr;
 //!
 //! fn main() -> Result<(), Error> {
@@ -67,7 +67,7 @@
     variant_size_differences,
     warnings
 )]
-#![doc(html_root_url = "https://docs.rs/conventional-commit")]
+#![doc(html_root_url = "https://docs.rs/conventional")]
 
 pub mod error;
 

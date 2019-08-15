@@ -1,5 +1,5 @@
 [package]
-name = "conventional-commit"
+name = "conventional"
 version = "0.1.0"
 authors = ["Jean Mertz <helloworld@rustic.games>"]
 keywords = ["parser", "git", "conventional-commit", "commit", "conventional"]
