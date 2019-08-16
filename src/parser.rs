@@ -10,6 +10,7 @@ use std::str;
 type CommitDetails<'a> = (
     &'a str,
     Option<&'a str>,
+    bool,
     &'a str,
     Option<&'a str>,
     Option<&'a str>,
@@ -18,11 +19,18 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, CommitDetails<'a>, E> {
-    let (i, (type_, scope, description)) = header(i)?;
+    let (i, (type_, scope, mut breaking, description)) = header(i)?;
     let (i, body) = body(i)?;
     let (i, breaking_change) = breaking_change(i)?;
 
-    Ok((i, (type_, scope, description, body, breaking_change)))
+    if breaking_change.is_some() {
+        breaking = true;
+    }
+
+    Ok((
+        i,
+        (type_, scope, breaking, description, body, breaking_change),
+    ))
 }
 
 #[inline]
@@ -35,6 +43,10 @@ fn not_blank_line<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'
         Some(index) => Ok(i.take_split(index)),
         None => Ok(("", i)),
     }
+}
+
+fn exclamation_mark<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+    context("exclamation_mark", tag("!"))(i)
 }
 
 fn colon<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -81,9 +93,16 @@ fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a s
 
 fn header<'a, E: ParseError<&'a str>>(
     i: &'a str,
-) -> IResult<&'a str, (&'a str, Option<&'a str>, &'a str), E> {
-    tuple((type_, scope_block, colon, space, description))(i)
-        .map(|(i, (a, b, _, _, c))| (i, (a, b, c)))
+) -> IResult<&'a str, (&'a str, Option<&'a str>, bool, &'a str), E> {
+    tuple((
+        type_,
+        scope_block,
+        opt(exclamation_mark),
+        colon,
+        space,
+        description,
+    ))(i)
+    .map(|(i, (a, b, c, _, _, d))| (i, (a, b, c.map(|_| true).unwrap_or_default(), d)))
 }
 
 fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Option<&'a str>, E> {
@@ -210,14 +229,21 @@ mod tests {
             let p = header::<VerboseError<&str>>;
 
             // valid
-            assert_eq!(test(p, "foo: bar").unwrap(), ("", ("foo", None, "bar")));
+            assert_eq!(
+                test(p, "foo: bar").unwrap(),
+                ("", ("foo", None, false, "bar"))
+            );
             assert_eq!(
                 test(p, "foo(bar): baz").unwrap(),
-                ("", ("foo", Some("bar"), "baz"))
+                ("", ("foo", Some("bar"), false, "baz"))
             );
             assert_eq!(
                 test(p, "foo(bar-baz): qux").unwrap(),
-                ("", ("foo", Some("bar-baz"), "qux"))
+                ("", ("foo", Some("bar-baz"), false, "qux"))
+            );
+            assert_eq!(
+                test(p, "foo!: bar").unwrap(),
+                ("", ("foo", None, true, "bar"))
             );
 
             // invalid

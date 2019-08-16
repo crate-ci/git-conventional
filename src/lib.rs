@@ -86,6 +86,7 @@ pub struct Commit<'a> {
     scope: Option<Scope<'a>>,
     description: Description<'a>,
     body: Option<Body<'a>>,
+    breaking: bool,
     breaking_change: Option<BreakingChange<'a>>,
 }
 
@@ -130,7 +131,7 @@ impl<'a> Commit<'a> {
     /// This function returns an error if the commit does not conform to the
     /// Conventional Commit specification.
     pub fn new(string: &'a str) -> Result<Self, Error<'a>> {
-        let (_, (ty, scope, description, body, breaking_change)) =
+        let (_, (ty, scope, breaking, description, body, breaking_change)) =
             parse::<VerboseError<&'a str>>(string).map_err(|err| (string, err))?;
 
         Ok(Self {
@@ -138,6 +139,7 @@ impl<'a> Commit<'a> {
             scope: scope.map(Into::into),
             description: description.into(),
             body: body.map(Into::into),
+            breaking,
             breaking_change: breaking_change.map(Into::into),
         })
     }
@@ -161,6 +163,23 @@ impl<'a> Commit<'a> {
     /// changes.
     pub fn body(&self) -> Option<&str> {
         self.body.as_ref().map(Deref::deref).map(str::trim)
+    }
+
+    /// A flag to signal that the commit contains breaking changes.
+    ///
+    /// This flag is set either when the commit has an exclamation mark after
+    /// the message type and scope, e.g.:
+    ///
+    ///   feat(scope)!: this is a breaking change
+    ///   feat!: this is a breaking change
+    ///
+    /// Or when the `BREAKING CHANGE: ` trailer is defined:
+    ///
+    ///   feat: my commit description
+    ///
+    ///   BREAKING CHANGE: this is a breaking change
+    pub const fn breaking(&self) -> bool {
+        self.breaking
     }
 
     /// The text discussing any breaking changes.
@@ -206,6 +225,18 @@ mod tests {
         assert_eq!("my type", commit.type_());
         assert_eq!(Some("my scope"), commit.scope());
         assert_eq!("hello world", commit.description());
+    }
+
+    #[test]
+    fn test_breaking_change() {
+        let commit = Commit::new("feat!: this is a breaking change").unwrap();
+        assert_eq!("feat", commit.type_());
+        assert!(commit.breaking());
+
+        let commit = Commit::new("feat: message\n\nBREAKING CHANGE: breaking change").unwrap();
+        assert_eq!("feat", commit.type_());
+        assert_eq!(Some("breaking change"), commit.breaking_change());
+        assert!(commit.breaking());
     }
 
     #[test]
