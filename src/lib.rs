@@ -20,7 +20,7 @@
 //!     in your break.
 //!     ";
 //!
-//!     let commit = Commit::from_str(message)?;
+//!     let commit = Commit::new(message)?;
 //!
 //!     assert_eq!(commit.type_(), "docs");
 //!     assert_eq!(commit.scope(), Some("example"));
@@ -70,23 +70,23 @@
 #![doc(html_root_url = "https://docs.rs/conventional")]
 
 pub mod error;
+mod parser;
 
 pub use error::Error;
 
-use itertools::Itertools;
 use std::fmt;
 use std::ops::Deref;
-use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
+use nom::error::VerboseError;
+use parser::parse;
 
 /// A conventional commit.
 #[derive(Debug)]
-pub struct Commit {
-    ty: Type,
-    scope: Option<Scope>,
-    description: Description,
-    body: Option<Body>,
-    breaking_change: Option<BreakingChange>,
+pub struct Commit<'a> {
+    ty: Type<'a>,
+    scope: Option<Scope<'a>>,
+    description: Description<'a>,
+    body: Option<Body<'a>>,
+    breaking_change: Option<BreakingChange<'a>>,
 }
 
 macro_rules! components {
@@ -94,9 +94,9 @@ macro_rules! components {
         $(
             /// A component of the conventional commit.
             #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-            struct $ty(String);
+            struct $ty<'a>(&'a str);
 
-            impl Deref for $ty {
+            impl Deref for $ty<'_> {
                 type Target = str;
 
                 fn deref(&self) -> &Self::Target {
@@ -104,15 +104,15 @@ macro_rules! components {
                 }
             }
 
-            impl fmt::Display for $ty {
+            impl fmt::Display for $ty<'_> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     self.0.fmt(f)
                 }
             }
 
-            impl<T: Into<String>> From<T> for $ty {
-                fn from(from: T) -> Self {
-                    Self(from.into())
+            impl<'a> From<&'a str> for $ty<'a> {
+                fn from(string: &'a str) -> Self {
+                    Self(string)
                 }
             }
         )+
@@ -121,7 +121,27 @@ macro_rules! components {
 
 components![Type, Scope, Description, Body, BreakingChange];
 
-impl Commit {
+impl<'a> Commit<'a> {
+    /// Create a new Conventional Commit based on the provided commit message
+    /// string.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error if the commit does not conform to the
+    /// Conventional Commit specification.
+    pub fn new(string: &'a str) -> Result<Self, Error> {
+        let (_, (ty, scope, description, body, breaking_change)) =
+            parse::<VerboseError<&'a str>>(string)?;
+
+        Ok(Self {
+            ty: ty.into(),
+            scope: scope.map(Into::into),
+            description: description.into(),
+            body: body.map(Into::into),
+            breaking_change: breaking_change.map(Into::into),
+        })
+    }
+
     /// The type of the commit.
     pub fn type_(&self) -> &str {
         self.ty.trim()
@@ -152,7 +172,7 @@ impl Commit {
     }
 }
 
-impl fmt::Display for Commit {
+impl fmt::Display for Commit<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.type_())?;
 
@@ -174,79 +194,6 @@ impl fmt::Display for Commit {
     }
 }
 
-impl FromStr for Commit {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use Error::*;
-
-        // Example:
-        //
-        // chore(changelog): improve changelog readability
-        //
-        // Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a tiny
-        // bit easier to parse while reading.
-        let mut chars = UnicodeSegmentation::graphemes(s, true).peekable();
-
-        // ex: "chore"
-        let ty: Type = chars
-            .peeking_take_while(|&c| c != "(" && c != ":")
-            .collect::<String>()
-            .into();
-        if ty.is_empty() {
-            return Err(MissingType);
-        }
-
-        // ex: "changelog"
-        let mut scope: Option<Scope> = None;
-        if chars.peek() == Some(&"(") {
-            let _ = scope.replace(
-                chars
-                    .peeking_take_while(|&c| c != ")")
-                    .skip(1)
-                    .collect::<String>()
-                    .into(),
-            );
-            chars = chars.dropping(1);
-        }
-
-        if chars.by_ref().take(2).collect::<String>() != ": " {
-            return Err(InvalidFormat);
-        }
-
-        // ex: "improve changelog readability"
-        let description: Description = chars
-            .peeking_take_while(|&c| c != "\n")
-            .collect::<String>()
-            .into();
-        if description.is_empty() {
-            return Err(MissingDescription);
-        }
-
-        let other: String = chars.collect::<String>().trim().to_owned();
-
-        // ex: "Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a
-        //      tiny bit easier to parse while reading."
-        let (body, breaking_change) = if other.is_empty() {
-            (None, None)
-        } else {
-            let mut data = other
-                .splitn(2, "BREAKING CHANGE:")
-                .map(|s| s.trim().to_owned());
-
-            (data.next().map(Into::into), data.next().map(Into::into))
-        };
-
-        Ok(Self {
-            ty,
-            scope,
-            description,
-            body,
-            breaking_change,
-        })
-    }
-}
-
 #[cfg(test)]
 #[allow(clippy::result_unwrap_used)]
 mod tests {
@@ -254,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_valid_simple_commit() {
-        let commit = Commit::from_str("my type(my scope): hello world").unwrap();
+        let commit = Commit::new("my type(my scope): hello world").unwrap();
 
         assert_eq!("my type", commit.type_());
         assert_eq!(Some("my scope"), commit.scope());
@@ -270,7 +217,7 @@ mod tests {
                       \n
                       BREAKING CHANGE: Just kidding!";
 
-        let commit = Commit::from_str(commit).unwrap();
+        let commit = Commit::new(commit).unwrap();
 
         assert_eq!("chore", commit.type_());
         assert_eq!(None, commit.scope());
@@ -287,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_missing_type() {
-        let err = Commit::from_str("").unwrap_err();
+        let err = Commit::new("").unwrap_err();
 
         assert_eq!(Error::MissingType, err);
     }

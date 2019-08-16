@@ -41,3 +41,29 @@ impl std::error::Error for Error {
         None
     }
 }
+
+impl From<nom::Err<nom::error::VerboseError<&str>>> for Error {
+    fn from(err: nom::Err<nom::error::VerboseError<&str>>) -> Self {
+        use nom::error::VerboseErrorKind::*;
+
+        match err {
+            nom::Err::Incomplete(_) => unreachable!(),
+            nom::Err::Error(err) | nom::Err::Failure(err) => match err.errors.last() {
+                None => unreachable!("you found a bug!"),
+                Some((_, kind)) => {
+                    {};
+                    match kind {
+                        Context(string) => match *string {
+                            "type" => Error::MissingType,
+                            "scope_block" | "scope" => Error::InvalidScope,
+                            "description" => Error::MissingDescription,
+                            "body" => Error::InvalidBody,
+                            "space" | "colon" | _ => Error::InvalidFormat,
+                            }
+                        Char(_) | Nom(_) => Error::InvalidFormat,
+                    }
+                }
+            },
+        }
+    }
+}
