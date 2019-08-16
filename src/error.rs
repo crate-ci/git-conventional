@@ -2,9 +2,18 @@
 
 use std::fmt;
 
-/// All possible errors returned when parsing a conventional commit.
+/// The error returned when parsing a commit fails.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Error {
+pub struct Error<'a> {
+    commit: &'a str,
+
+    /// The kind of error.
+    pub kind: Kind,
+}
+
+/// All possible error kinds returned when parsing a conventional commit.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Kind {
     /// The commit type is missing from the commit message.
     MissingType,
 
@@ -22,11 +31,11 @@ pub enum Error {
     InvalidFormat,
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for Error<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Error::*;
+        use Kind::*;
 
-        match self {
+        match self.kind {
             MissingType => f.write_str("missing type definition"),
             InvalidScope => f.write_str("invalid scope format"),
             MissingDescription => f.write_str("missing commit description"),
@@ -36,17 +45,18 @@ impl fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {
+impl std::error::Error for Error<'_> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
     }
 }
 
-impl From<nom::Err<nom::error::VerboseError<&str>>> for Error {
-    fn from(err: nom::Err<nom::error::VerboseError<&str>>) -> Self {
+impl<'a> From<(&'a str, nom::Err<nom::error::VerboseError<&'a str>>)> for Error<'a> {
+    fn from((commit, err): (&'a str, nom::Err<nom::error::VerboseError<&'a str>>)) -> Self {
         use nom::error::VerboseErrorKind::*;
+        use Kind::*;
 
-        match err {
+        let kind = match err {
             nom::Err::Incomplete(_) => unreachable!(),
             nom::Err::Error(err) | nom::Err::Failure(err) => match err.errors.last() {
                 None => unreachable!("you found a bug!"),
@@ -54,16 +64,18 @@ impl From<nom::Err<nom::error::VerboseError<&str>>> for Error {
                     {};
                     match kind {
                         Context(string) => match *string {
-                            "type" => Error::MissingType,
-                            "scope_block" | "scope" => Error::InvalidScope,
-                            "description" => Error::MissingDescription,
-                            "body" => Error::InvalidBody,
-                            "space" | "colon" | _ => Error::InvalidFormat,
-                            }
-                        Char(_) | Nom(_) => Error::InvalidFormat,
+                            "type" => MissingType,
+                            "scope_block" | "scope" => InvalidScope,
+                            "description" => MissingDescription,
+                            "body" => InvalidBody,
+                            "space" | "colon" | _ => InvalidFormat,
+                        },
+                        Char(_) | Nom(_) => InvalidFormat,
                     }
                 }
             },
-        }
+        };
+
+        Self { commit, kind }
     }
 }

@@ -8,7 +8,7 @@
 //! use conventional::{Commit, Error};
 //! use std::str::FromStr;
 //!
-//! fn main() -> Result<(), Error> {
+//! fn main() -> Result<(), Error<'static>> {
 //!     let message = "\
 //!     docs(example): add tested usage example
 //!
@@ -72,12 +72,12 @@
 pub mod error;
 mod parser;
 
-pub use error::Error;
+pub use error::{Error, Kind as ErrorKind};
 
-use std::fmt;
-use std::ops::Deref;
 use nom::error::VerboseError;
 use parser::parse;
+use std::fmt;
+use std::ops::Deref;
 
 /// A conventional commit.
 #[derive(Debug)]
@@ -129,9 +129,9 @@ impl<'a> Commit<'a> {
     ///
     /// This function returns an error if the commit does not conform to the
     /// Conventional Commit specification.
-    pub fn new(string: &'a str) -> Result<Self, Error> {
+    pub fn new(string: &'a str) -> Result<Self, Error<'a>> {
         let (_, (ty, scope, description, body, breaking_change)) =
-            parse::<VerboseError<&'a str>>(string)?;
+            parse::<VerboseError<&'a str>>(string).map_err(|err| (string, err))?;
 
         Ok(Self {
             ty: ty.into(),
@@ -236,6 +236,6 @@ mod tests {
     fn test_missing_type() {
         let err = Commit::new("").unwrap_err();
 
-        assert_eq!(Error::MissingType, err);
+        assert_eq!(ErrorKind::MissingType, err.kind);
     }
 }
