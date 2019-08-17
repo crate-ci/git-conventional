@@ -1,7 +1,7 @@
 use nom::bytes::complete::{tag, take, take_till1, take_while1};
-use nom::character::complete::{char, line_ending, space0};
+use nom::character::complete::{alphanumeric1, char, line_ending, space0};
 use nom::character::is_alphanumeric;
-use nom::combinator::{all_consuming, opt};
+use nom::combinator::{all_consuming, opt, peek};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::sequence::{delimited, preceded, tuple};
 use nom::{FindSubstring, IResult, InputLength, InputTake, Slice};
@@ -83,6 +83,8 @@ fn scope_block<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Optio
 
 fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     let valid = |c: char| is_alphanumeric(c as u8) || c == ' ' || c == '-' || c == '_';
+
+    let _ = peek(alphanumeric1)(i)?;
 
     context("scope", all_consuming(take_while1(valid)))(i)
 }
@@ -174,17 +176,19 @@ mod tests {
 
             // valid
             assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
+            assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
             assert_eq!(test(p, "foo2bar").unwrap(), ("", "foo2bar"));
             assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
             assert_eq!(test(p, "foo_bar").unwrap(), ("", "foo_bar"));
 
             // invalid
             assert!(test(p, "").is_err());
-            // assert!(test(p, " ").is_err());
-            // assert!(test(p, "  ").is_err());
+            assert!(test(p, " ").is_err());
+            assert!(test(p, "  ").is_err());
             assert!(test(p, ")").is_err());
             assert!(test(p, "@").is_err());
-            // assert!(test(p, "foo bar").is_err());
+            assert!(test(p, "-foo").is_err());
+            assert!(test(p, "_foo").is_err());
             // assert!(test(p, "foo ").is_err());
         }
 
