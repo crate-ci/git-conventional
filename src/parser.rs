@@ -4,7 +4,7 @@ use nom::character::is_alphanumeric;
 use nom::combinator::{all_consuming, opt, peek};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::sequence::{delimited, preceded, tuple};
-use nom::{FindSubstring, IResult, InputLength, InputTake, Slice};
+use nom::{FindSubstring, IResult, InputTake, Slice};
 use std::str;
 
 type CommitDetails<'a> = (
@@ -121,7 +121,7 @@ fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Option<&'a s
 
     let end = i
         .find_substring("BREAKING CHANGE: ")
-        .unwrap_or_else(|| i.input_len());
+        .unwrap_or_else(|| i.chars().count());
 
     take(end)(i).map(|(i, out)| (i, Some(out)))
 }
@@ -131,7 +131,7 @@ fn breaking_change<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, O
 }
 
 #[cfg(test)]
-#[allow(clippy::result_unwrap_used)]
+#[allow(clippy::result_unwrap_used, clippy::non_ascii_literal)]
 mod tests {
     use super::*;
     use nom::error::{convert_error, VerboseError};
@@ -278,6 +278,7 @@ mod tests {
 
             // valid
             assert_eq!(test(p, "").unwrap(), ("", None));
+            assert_eq!(test(p, "\n\n💃🏽").unwrap(), ("", Some("💃🏽")));
             assert_eq!(test(p, "\n\nfoo bar").unwrap(), ("", Some("foo bar")));
             assert_eq!(
                 test(p, "\n\nfoo\nbar\n\nbaz").unwrap(),
