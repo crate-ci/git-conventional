@@ -1,11 +1,15 @@
 <div align="center">
 
 <h1><code>conventional::Commit</code></h1>
-<sup>A Rust parser library for the [Conventional Commit] spec.</sup>
 
 [![Latest Crate Version](https://img.shields.io/crates/v/conventional.svg?logo=rust&label=version&logoColor=white&colorB=brightgreen)](https://crates.io/crates/conventional "The latest released version on crates.io.")
 [![Library Documentation](https://docs.rs/conventional/badge.svg)](https://docs.rs/conventional "The online documentation at docs.rs.")
 [![Discord Chat](https://img.shields.io/discord/477552212156088320.svg?logo=discord&label=discord%20chat&logoColor=white)](https://discord.gg/Kc4qZWE "Ask a question or just enjoy your stay!")
+
+<br />
+<strong>A Rust parser library for the <a href="https://www.conventionalcommits.org">Conventional Commit</a> spec.</strong>
+<br />
+<br />
 
 </div>
 
@@ -45,6 +49,5 @@
 
 4. Check out tools like [**Jilu**] for an example of library usage.
 
-[conventional commit]: https://www.conventionalcommits.org
 [latest specification]: https://www.conventionalcommits.org/en/v1.0.0-beta.4/#specification
 [**Jilu**]: https://github.com/rustic-games/jilu
