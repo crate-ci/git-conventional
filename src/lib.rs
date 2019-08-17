@@ -8,7 +8,7 @@
 //! use conventional::{Commit, Error, Simple as _};
 //! use std::str::FromStr;
 //!
-//! fn main() -> Result<(), Error<'static>> {
+//! fn main() -> Result<(), Error> {
 //!     let message = "\
 //!     docs(example): add tested usage example
 //!

@@ -28,7 +28,7 @@ impl<'a> Commit<'a> {
     ///
     /// This function returns an error if the commit does not conform to the
     /// Conventional Commit specification.
-    pub fn new(string: &'a str) -> Result<Self, Error<'a>> {
+    pub fn new(string: &'a str) -> Result<Self, Error> {
         let (_, (ty, scope, breaking, description, body, breaking_change)) =
             parse::<VerboseError<&'a str>>(string).map_err(|err| (string, err))?;
 

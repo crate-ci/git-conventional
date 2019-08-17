@@ -3,9 +3,9 @@
 use std::fmt;
 
 /// The error returned when parsing a commit fails.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Error<'a> {
-    commit: &'a str,
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Error {
+    commit: String,
 
     /// The kind of error.
     pub kind: Kind,
@@ -31,7 +31,7 @@ pub enum Kind {
     InvalidFormat,
 }
 
-impl fmt::Display for Error<'_> {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Kind::*;
 
@@ -45,13 +45,13 @@ impl fmt::Display for Error<'_> {
     }
 }
 
-impl std::error::Error for Error<'_> {
+impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
     }
 }
 
-impl<'a> From<(&'a str, nom::Err<nom::error::VerboseError<&'a str>>)> for Error<'a> {
+impl<'a> From<(&'a str, nom::Err<nom::error::VerboseError<&'a str>>)> for Error {
     fn from((commit, err): (&'a str, nom::Err<nom::error::VerboseError<&'a str>>)) -> Self {
         use nom::error::VerboseErrorKind::*;
         use Kind::*;
@@ -76,6 +76,9 @@ impl<'a> From<(&'a str, nom::Err<nom::error::VerboseError<&'a str>>)> for Error<
             },
         };
 
-        Self { commit, kind }
+        Self {
+            commit: commit.to_owned(),
+            kind,
+        }
     }
 }
