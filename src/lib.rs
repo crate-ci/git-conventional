@@ -5,7 +5,7 @@
 //! # Example
 //!
 //! ```rust
-//! use conventional::{Commit, Error};
+//! use conventional::{Commit, Error, Simple as _};
 //! use std::str::FromStr;
 //!
 //! fn main() -> Result<(), Error<'static>> {
@@ -69,154 +69,19 @@
 )]
 #![doc(html_root_url = "https://docs.rs/conventional")]
 
+pub mod commit;
+pub mod component;
 pub mod error;
 mod parser;
 
+pub use commit::{simple::Simple, typed::Typed, Commit};
+pub use component::{Body, BreakingChange, Description, Scope, Type};
 pub use error::{Error, Kind as ErrorKind};
-
-use nom::error::VerboseError;
-use parser::parse;
-use std::fmt;
-use std::ops::Deref;
-
-/// A conventional commit.
-#[derive(Debug)]
-pub struct Commit<'a> {
-    ty: Type<'a>,
-    scope: Option<Scope<'a>>,
-    description: Description<'a>,
-    body: Option<Body<'a>>,
-    breaking: bool,
-    breaking_change: Option<BreakingChange<'a>>,
-}
-
-macro_rules! components {
-    ($($ty:ident),+) => (
-        $(
-            /// A component of the conventional commit.
-            #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-            struct $ty<'a>(&'a str);
-
-            impl Deref for $ty<'_> {
-                type Target = str;
-
-                fn deref(&self) -> &Self::Target {
-                    &self.0
-                }
-            }
-
-            impl fmt::Display for $ty<'_> {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    self.0.fmt(f)
-                }
-            }
-
-            impl<'a> From<&'a str> for $ty<'a> {
-                fn from(string: &'a str) -> Self {
-                    Self(string)
-                }
-            }
-        )+
-    )
-}
-
-components![Type, Scope, Description, Body, BreakingChange];
-
-impl<'a> Commit<'a> {
-    /// Create a new Conventional Commit based on the provided commit message
-    /// string.
-    ///
-    /// # Errors
-    ///
-    /// This function returns an error if the commit does not conform to the
-    /// Conventional Commit specification.
-    pub fn new(string: &'a str) -> Result<Self, Error<'a>> {
-        let (_, (ty, scope, breaking, description, body, breaking_change)) =
-            parse::<VerboseError<&'a str>>(string).map_err(|err| (string, err))?;
-
-        Ok(Self {
-            ty: ty.into(),
-            scope: scope.map(Into::into),
-            description: description.into(),
-            body: body.map(Into::into),
-            breaking,
-            breaking_change: breaking_change.map(Into::into),
-        })
-    }
-
-    /// The type of the commit.
-    pub fn type_(&self) -> &str {
-        self.ty.trim()
-    }
-
-    /// The optional scope of the commit.
-    pub fn scope(&self) -> Option<&str> {
-        self.scope.as_ref().map(Deref::deref).map(str::trim)
-    }
-
-    /// The commit description.
-    pub fn description(&self) -> &str {
-        self.description.trim()
-    }
-
-    /// The commit body, containing a more detailed explanation of the commit
-    /// changes.
-    pub fn body(&self) -> Option<&str> {
-        self.body.as_ref().map(Deref::deref).map(str::trim)
-    }
-
-    /// A flag to signal that the commit contains breaking changes.
-    ///
-    /// This flag is set either when the commit has an exclamation mark after
-    /// the message type and scope, e.g.:
-    ///
-    ///   feat(scope)!: this is a breaking change
-    ///   feat!: this is a breaking change
-    ///
-    /// Or when the `BREAKING CHANGE: ` trailer is defined:
-    ///
-    ///   feat: my commit description
-    ///
-    ///   BREAKING CHANGE: this is a breaking change
-    pub const fn breaking(&self) -> bool {
-        self.breaking
-    }
-
-    /// The text discussing any breaking changes.
-    pub fn breaking_change(&self) -> Option<&str> {
-        self.breaking_change
-            .as_ref()
-            .map(Deref::deref)
-            .map(str::trim)
-    }
-}
-
-impl fmt::Display for Commit<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.type_())?;
-
-        if let Some(scope) = &self.scope() {
-            f.write_fmt(format_args!("({})", scope))?;
-        }
-
-        f.write_fmt(format_args!(": {}", self.description))?;
-
-        if let Some(body) = &self.body() {
-            f.write_fmt(format_args!("\n\n{}", body))?;
-        }
-
-        if let Some(breaking_change) = &self.breaking_change() {
-            f.write_fmt(format_args!("\n\nBREAKING CHANGE: {}", breaking_change))?;
-        }
-
-        Ok(())
-    }
-}
 
 #[cfg(test)]
 #[allow(clippy::result_unwrap_used)]
 mod tests {
-    use super::*;
+    use super::{Commit, ErrorKind, Simple as _};
 
     #[test]
     fn test_valid_simple_commit() {
@@ -268,5 +133,18 @@ mod tests {
         let err = Commit::new("").unwrap_err();
 
         assert_eq!(ErrorKind::MissingType, err.kind);
+    }
+
+    mod typed {
+        use crate::{component::*, Commit, Typed as _};
+
+        #[test]
+        fn test_typed_commit() {
+            let commit = Commit::new("my type(my scope): hello world").unwrap();
+
+            assert_eq!(Type("my type"), commit.type_());
+            assert_eq!(Some(Scope("my scope")), commit.scope());
+            assert_eq!(Description("hello world"), commit.description());
+        }
     }
 }
