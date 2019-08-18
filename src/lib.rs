@@ -106,11 +106,11 @@ mod tests {
 
     #[test]
     fn test_valid_complex_commit() {
-        let commit = "chore: improve changelog readability\n
-                      \n
+        let commit = "chore: improve changelog readability\n\
+                      \n\
                       Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a tiny bit \
-                      easier to parse while reading.\n
-                      \n
+                      easier to parse while reading.\n\
+                      \n\
                       BREAKING CHANGE: Just kidding!";
 
         let commit = Commit::new(commit).unwrap();

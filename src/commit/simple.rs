@@ -51,7 +51,7 @@ impl Simple for Commit<'_> {
     }
 
     fn body(&self) -> Option<&str> {
-        self.body.as_ref().map(Deref::deref).map(str::trim)
+        self.body.as_ref().map(Deref::deref).map(str::trim_end)
     }
 
     fn breaking(&self) -> bool {
@@ -62,6 +62,6 @@ impl Simple for Commit<'_> {
         self.breaking_change
             .as_ref()
             .map(Deref::deref)
-            .map(str::trim)
+            .map(str::trim_end)
     }
 }

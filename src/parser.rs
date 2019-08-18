@@ -278,6 +278,10 @@ mod tests {
 
             // valid
             assert_eq!(test(p, "").unwrap(), ("", None));
+            assert_eq!(
+                test(p, "\n\n    code block").unwrap(),
+                ("", Some("    code block"))
+            );
             assert_eq!(test(p, "\n\n💃🏽").unwrap(), ("", Some("💃🏽")));
             assert_eq!(test(p, "\n\nfoo bar").unwrap(), ("", Some("foo bar")));
             assert_eq!(
