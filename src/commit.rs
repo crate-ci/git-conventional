@@ -37,7 +37,7 @@ impl<'a> Commit<'a> {
             scope: scope.map(Into::into),
             description: description.into(),
             body: body.map(Into::into),
-            breaking,
+            breaking: breaking_change.is_some() || breaking.is_some(),
             breaking_change: breaking_change.map(Into::into),
         })
     }

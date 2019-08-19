@@ -10,7 +10,7 @@ use std::str;
 type CommitDetails<'a> = (
     &'a str,
     Option<&'a str>,
-    bool,
+    Option<&'a str>,
     &'a str,
     Option<&'a str>,
     Option<&'a str>,
@@ -19,13 +19,9 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, CommitDetails<'a>, E> {
-    let (i, (type_, scope, mut breaking, description)) = header(i)?;
+    let (i, (type_, scope, breaking, description)) = header(i)?;
     let (i, body) = body(i)?;
     let (i, breaking_change) = breaking_change(i)?;
-
-    if breaking_change.is_some() {
-        breaking = true;
-    }
 
     Ok((
         i,
@@ -99,16 +95,13 @@ fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a s
 
 fn header<'a, E: ParseError<&'a str>>(
     i: &'a str,
-) -> IResult<&'a str, (&'a str, Option<&'a str>, bool, &'a str), E> {
+) -> IResult<&'a str, (&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
     tuple((
         type_,
         opt(delimited(char('('), cut(scope), char(')'))),
         opt(exclamation_mark),
-        colon,
-        space,
-        description,
+        preceded(tuple((colon, space)), description),
     ))(i)
-    .map(|(i, (a, b, c, _, _, d))| (i, (a, b, c.map(|_| true).unwrap_or_default(), d)))
 }
 
 fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Option<&'a str>, E> {
@@ -224,19 +217,19 @@ mod tests {
             // valid
             assert_eq!(
                 test(p, "foo: bar").unwrap(),
-                ("", ("foo", None, false, "bar"))
+                ("", ("foo", None, None, "bar"))
             );
             assert_eq!(
                 test(p, "foo(bar): baz").unwrap(),
-                ("", ("foo", Some("bar"), false, "baz"))
+                ("", ("foo", Some("bar"), None, "baz"))
             );
             assert_eq!(
                 test(p, "foo(bar-baz): qux").unwrap(),
-                ("", ("foo", Some("bar-baz"), false, "qux"))
+                ("", ("foo", Some("bar-baz"), None, "qux"))
             );
             assert_eq!(
                 test(p, "foo!: bar").unwrap(),
-                ("", ("foo", None, true, "bar"))
+                ("", ("foo", None, Some("!"), "bar"))
             );
 
             // invalid
