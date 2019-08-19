@@ -2,7 +2,7 @@ use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
 use nom::character::is_alphanumeric;
-use nom::combinator::{all_consuming, cut, map_parser, opt, verify};
+use nom::combinator::{all_consuming, cut, map, map_parser, opt, verify};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::{IResult, InputTake};
@@ -140,11 +140,14 @@ fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> 
         offset += line.chars().count() + 1;
     }
 
-    take(offset - 1)(i)
+    map(take(offset - 1), str::trim_end)(i)
 }
 
 fn breaking_change<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    preceded(tag("BREAKING CHANGE: "), not_blank_line)(i)
+    map(
+        preceded(tag("BREAKING CHANGE: "), not_blank_line),
+        str::trim_end,
+    )(i)
 }
 
 #[cfg(test)]
@@ -287,7 +290,7 @@ mod tests {
             assert_eq!(test(p, "foo\nbar\n\nbaz").unwrap(), ("", "foo\nbar\n\nbaz"));
             assert_eq!(
                 test(p, "foo\n\nBREAKING CHANGE: oops!").unwrap(),
-                ("BREAKING CHANGE: oops!", "foo\n\n")
+                ("BREAKING CHANGE: oops!", "foo")
             );
 
             // invalid
@@ -304,6 +307,7 @@ mod tests {
             assert_eq!(test(p, "BREAKING CHANGE: foo bar").unwrap(), ("", "foo bar"));
             assert_eq!(test(p, "BREAKING CHANGE: foo\nbar").unwrap(), ("", "foo\nbar"));
             assert_eq!(test(p, "BREAKING CHANGE: 1\n2\n\n3").unwrap(), ("\n\n3", "1\n2"));
+            assert_eq!(test(p, "BREAKING CHANGE: foo    ").unwrap(), ("", "foo"));
 
             // invalid
             assert!(test(p, "").is_err());
