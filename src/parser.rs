@@ -38,6 +38,10 @@ const fn is_line_ending(chr: char) -> bool {
     chr == '\n'
 }
 
+fn is_compound_noun_char(c: char) -> bool {
+    is_alphanumeric(c as u8) || c == ' ' || c == '-'
+}
+
 fn not_blank_line<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     match i.find("\n\n") {
         Some(index) => Ok(i.take_split(index)),
@@ -58,10 +62,7 @@ fn space<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E>
 }
 
 fn type_<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    context(
-        "type",
-        take_while1(|c: char| is_alphanumeric(c as u8) || c == ' '),
-    )(i)
+    context("type", take_while1(is_compound_noun_char))(i)
 }
 
 fn scope_block<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Option<&'a str>, E> {
@@ -82,11 +83,9 @@ fn scope_block<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Optio
 }
 
 fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    let valid = |c: char| is_alphanumeric(c as u8) || c == ' ' || c == '-' || c == '_';
-
     let _ = peek(alphanumeric1)(i)?;
 
-    context("scope", all_consuming(take_while1(valid)))(i)
+    context("scope", all_consuming(take_while1(is_compound_noun_char)))(i)
 }
 
 fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -158,9 +157,10 @@ mod tests {
             let p = type_::<VerboseError<&str>>;
 
             // valid
-            // assert_eq!(test(p, "foo bar").unwrap(), (" bar", "foo"));
             assert_eq!(test(p, "foo2bar").unwrap(), ("", "foo2bar"));
-            assert_eq!(test(p, "foo-bar").unwrap(), ("-bar", "foo"));
+            assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
+            assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
+            assert_eq!(test(p, "foo(bar").unwrap(), ("(bar", "foo"));
 
             // invalid
             assert!(test(p, "").is_err());
@@ -179,7 +179,6 @@ mod tests {
             assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
             assert_eq!(test(p, "foo2bar").unwrap(), ("", "foo2bar"));
             assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
-            assert_eq!(test(p, "foo_bar").unwrap(), ("", "foo_bar"));
 
             // invalid
             assert!(test(p, "").is_err());
@@ -189,6 +188,7 @@ mod tests {
             assert!(test(p, "@").is_err());
             assert!(test(p, "-foo").is_err());
             assert!(test(p, "_foo").is_err());
+            assert!(test(p, "foo_bar").is_err());
             // assert!(test(p, "foo ").is_err());
         }
 
