@@ -1,10 +1,11 @@
+use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending, space0};
 use nom::character::is_alphanumeric;
 use nom::combinator::{all_consuming, cut, map_parser, opt, verify};
 use nom::error::{context, ErrorKind, ParseError};
-use nom::sequence::{delimited, preceded, tuple};
-use nom::{FindSubstring, IResult, InputTake};
+use nom::sequence::{delimited, preceded, terminated, tuple};
+use nom::{IResult, InputTake};
 use std::str;
 
 type CommitDetails<'a> = (
@@ -19,9 +20,10 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
-    let (i, (type_, scope, breaking, description)) = header(i)?;
-    let (i, body) = body(i)?;
-    let (_, breaking_change) = breaking_change(i)?;
+    let (i, header) = terminated(header, alt((line_ending, eof)))(i)?;
+    let (i, body) = opt(preceded(line_ending, body))(i)?;
+    let (_, breaking_change) = opt(breaking_change)(i)?;
+    let (type_, scope, breaking, description) = header;
 
     Ok((type_, scope, breaking, description, body, breaking_change))
 }
@@ -54,6 +56,14 @@ fn not_blank_line<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'
     match i.find("\n\n") {
         Some(index) => Ok(i.take_split(index)),
         None => Ok(("", i)),
+    }
+}
+
+fn eof<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+    if i.is_empty() {
+        Ok(("", ""))
+    } else {
+        Err(nom::Err::Error(E::from_error_kind("", ErrorKind::Eof)))
     }
 }
 
@@ -90,6 +100,7 @@ fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a s
     context("description", preceded(space0, take_till1(is_line_ending)))(i)
 }
 
+#[allow(clippy::type_complexity)]
 fn header<'a, E: ParseError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
@@ -101,27 +112,28 @@ fn header<'a, E: ParseError<&'a str>>(
     ))(i)
 }
 
-fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Option<&'a str>, E> {
-    if i.is_empty() {
-        return Ok(("", None));
-    }
-
-    let (i, _) = tuple((line_ending, line_ending))(i)?;
+fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
         let err = E::add_context(i, "body", err);
-        return Err(nom::Err::Error(err));
+        return Err(nom::Err::Failure(err));
     }
 
-    let end = i
-        .find_substring("BREAKING CHANGE: ")
-        .unwrap_or_else(|| i.chars().count());
+    let mut offset = 0;
+    for line in i.lines() {
+        if line.starts_with("BREAKING CHANGE: ") {
+            offset += 1;
+            break;
+        }
 
-    take(end)(i).map(|(i, out)| (i, Some(out)))
+        offset += line.chars().count() + 1;
+    }
+
+    take(offset - 1)(i)
 }
 
-fn breaking_change<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Option<&'a str>, E> {
-    opt(preceded(tag("BREAKING CHANGE: "), not_blank_line))(i)
+fn breaking_change<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+    preceded(tag("BREAKING CHANGE: "), not_blank_line)(i)
 }
 
 #[cfg(test)]
@@ -256,29 +268,17 @@ mod tests {
             let p = body::<VerboseError<&str>>;
 
             // valid
-            assert_eq!(test(p, "").unwrap(), ("", None));
+            assert_eq!(test(p, "    code block").unwrap(), ("", "    code block"));
+            assert_eq!(test(p, "💃🏽").unwrap(), ("", "💃🏽"));
+            assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
+            assert_eq!(test(p, "foo\nbar\n\nbaz").unwrap(), ("", "foo\nbar\n\nbaz"));
             assert_eq!(
-                test(p, "\n\n    code block").unwrap(),
-                ("", Some("    code block"))
-            );
-            assert_eq!(test(p, "\n\n💃🏽").unwrap(), ("", Some("💃🏽")));
-            assert_eq!(test(p, "\n\nfoo bar").unwrap(), ("", Some("foo bar")));
-            assert_eq!(
-                test(p, "\n\nfoo\nbar\n\nbaz").unwrap(),
-                ("", Some("foo\nbar\n\nbaz"))
-            );
-            assert_eq!(
-                test(p, "\n\nfoo\n\nBREAKING CHANGE: oops!").unwrap(),
-                ("BREAKING CHANGE: oops!", Some("foo\n\n"))
+                test(p, "foo\n\nBREAKING CHANGE: oops!").unwrap(),
+                ("BREAKING CHANGE: oops!", "foo\n\n")
             );
 
             // invalid
-            assert!(test(p, " ").is_err());
-            assert!(test(p, "foo").is_err());
-            assert!(test(p, "\n").is_err());
-            assert!(test(p, "\n ").is_err());
-            assert!(test(p, "\nfoo").is_err());
-            assert!(test(p, "\n\n").is_err());
+            assert!(test(p, "").is_err());
         }
 
         #[test]
@@ -287,16 +287,18 @@ mod tests {
             let p = breaking_change::<VerboseError<&str>>;
 
             // valid
-            assert_eq!(test(p, "").unwrap(), ("", None));
-            assert_eq!(test(p, " ").unwrap(), (" ", None));
-            assert_eq!(test(p, "  ").unwrap(), ("  ", None));
-            assert_eq!(test(p, "foo").unwrap(), ("foo", None));
-            assert_eq!(test(p, "BREAKING CHANGE").unwrap(), ("BREAKING CHANGE", None));
-            assert_eq!(test(p, "BREAKING CHANGE:").unwrap(), ("BREAKING CHANGE:", None));
-            assert_eq!(test(p, "BREAKING CHANGE: ").unwrap(), ("", Some("")));
-            assert_eq!(test(p, "BREAKING CHANGE: foo bar").unwrap(), ("", Some("foo bar")));
-            assert_eq!(test(p, "BREAKING CHANGE: foo\nbar").unwrap(), ("", Some("foo\nbar")));
-            assert_eq!(test(p, "BREAKING CHANGE: 1\n2\n\n3").unwrap(), ("\n\n3", Some("1\n2")));
+            assert_eq!(test(p, "BREAKING CHANGE: ").unwrap(), ("", ""));
+            assert_eq!(test(p, "BREAKING CHANGE: foo bar").unwrap(), ("", "foo bar"));
+            assert_eq!(test(p, "BREAKING CHANGE: foo\nbar").unwrap(), ("", "foo\nbar"));
+            assert_eq!(test(p, "BREAKING CHANGE: 1\n2\n\n3").unwrap(), ("\n\n3", "1\n2"));
+
+            // invalid
+            assert!(test(p, "").is_err());
+            assert!(test(p, " ").is_err());
+            assert!(test(p, "  ").is_err());
+            assert!(test(p, "foo").is_err());
+            assert!(test(p, "BREAKING CHANGE").is_err());
+            assert!(test(p, "BREAKING CHANGE:").is_err());
         }
     }
 }

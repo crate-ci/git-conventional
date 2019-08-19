@@ -14,7 +14,7 @@
 //!
 //!     This example is tested using Rust's doctest capabilities. Having this
 //!     example helps people understand how to use the parser.
-//!
+//!     \n\
 //!     BREAKING CHANGE: Going from nothing to something, meaning anyone doing
 //!     nothing before suddenly has something to do. That sounds like a change
 //!     in your break.
