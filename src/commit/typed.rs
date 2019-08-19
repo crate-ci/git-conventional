@@ -2,7 +2,7 @@
 //! Conventional Commit implementations.
 //! Conventional Commit implementations.
 
-use crate::{Body, BreakingChange, Commit, Description, Scope, Type};
+use crate::{Body, Commit, Description, Scope, Trailer, Type};
 
 /// The strongly-typed variant of a commit.
 pub trait Typed<'a> {
@@ -19,9 +19,6 @@ pub trait Typed<'a> {
     /// changes.
     fn body(&self) -> Option<Body<'a>>;
 
-    /// The text discussing any breaking changes.
-    fn breaking_change(&self) -> Option<BreakingChange<'a>>;
-
     /// A flag to signal that the commit contains breaking changes.
     ///
     /// This flag is set either when the commit has an exclamation mark after
@@ -36,6 +33,11 @@ pub trait Typed<'a> {
     ///
     ///   BREAKING CHANGE: this is a breaking change
     fn breaking(&self) -> bool;
+
+    /// Any Git trailers.
+    ///
+    /// See: <https://git-scm.com/docs/git-interpret-trailers>
+    fn trailers(&self) -> &[Trailer<'_>];
 }
 
 impl<'a> Typed<'a> for Commit<'a> {
@@ -55,11 +57,11 @@ impl<'a> Typed<'a> for Commit<'a> {
         self.body
     }
 
-    fn breaking_change(&self) -> Option<BreakingChange<'a>> {
-        self.breaking_change
-    }
-
     fn breaking(&self) -> bool {
         self.breaking
+    }
+
+    fn trailers(&self) -> &[Trailer<'_>] {
+        &self.trailers
     }
 }

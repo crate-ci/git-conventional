@@ -10,7 +10,7 @@
 //!
 //! fn main() -> Result<(), Error> {
 //!     let message = "\
-//!     docs(example): add tested usage example
+//!     docs(example)!: add tested usage example
 //!
 //!     This example is tested using Rust's doctest capabilities. Having this
 //!     example helps people understand how to use the parser.
@@ -18,15 +18,35 @@
 //!     BREAKING CHANGE: Going from nothing to something, meaning anyone doing
 //!     nothing before suddenly has something to do. That sounds like a change
 //!     in your break.
+//!     \n\
+//!     Co-Authored-By: Lisa Simpson <lisa@simpsons.fam>\n\
+//!     Closes #12
 //!     ";
 //!
 //!     let commit = Commit::new(message)?;
 //!
+//!     // You can access all components of the header.
 //!     assert_eq!(commit.type_(), "docs");
 //!     assert_eq!(commit.scope(), Some("example"));
 //!     assert_eq!(commit.description(), "add tested usage example");
+//!
+//!     // And the free-form commit body.
 //!     assert!(commit.body().unwrap().contains("helps people understand"));
-//!     assert!(commit.breaking_change().unwrap().contains("That sounds like a change"));
+//!
+//!     // If a commit is marked with a bang (`!`) OR has a trailer with the key
+//!     // "BREAKING CHANGE", it is considered a "breaking" commit.
+//!     assert!(commit.breaking());
+//!
+//!     // You can access each trailer individually.
+//!     assert!(commit.trailers().get(0).unwrap().value().contains("That sounds like a change"));
+//!
+//!     // Trailers provide access to their key and value.
+//!     assert_eq!(commit.trailers().get(1).unwrap().key(), "Co-Authored-By");
+//!     assert_eq!(commit.trailers().get(1).unwrap().value(), "Lisa Simpson <lisa@simpsons.fam>");
+//!
+//!     // Two types of separators are supported, regular ": ", and " #":
+//!     assert_eq!(commit.trailers().get(2).unwrap().separator(), " #");
+//!     assert_eq!(commit.trailers().get(2).unwrap().value(), "12");
 //!     # Ok(())
 //! }
 //! ```
@@ -75,7 +95,10 @@ pub mod error;
 mod parser;
 
 pub use commit::{simple::Simple, typed::Typed, Commit};
-pub use component::{Body, BreakingChange, Description, Scope, Type};
+pub use component::{
+    Body, Description, Scope, SimpleTrailer, Trailer, TrailerKey, TrailerSeparator, TrailerValue,
+    Type,
+};
 pub use error::{Error, Kind as ErrorKind};
 
 #[cfg(test)]
@@ -100,7 +123,10 @@ mod tests {
 
         let commit = Commit::new("feat: message\n\nBREAKING CHANGE: breaking change").unwrap();
         assert_eq!("feat", commit.type_());
-        assert_eq!(Some("breaking change"), commit.breaking_change());
+        assert_eq!(
+            "breaking change",
+            &*commit.trailers().get(0).unwrap().value()
+        );
         assert!(commit.breaking());
     }
 
@@ -125,7 +151,7 @@ mod tests {
             ),
             commit.body()
         );
-        assert_eq!(Some("Just kidding!"), commit.breaking_change());
+        assert_eq!("Just kidding!", &*commit.trailers().get(0).unwrap().value());
     }
 
     #[test]

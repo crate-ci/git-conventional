@@ -2,10 +2,11 @@ use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
 use nom::character::is_alphanumeric;
-use nom::combinator::{all_consuming, cut, map, map_parser, opt, verify};
+use nom::combinator::{all_consuming, cut, map, map_parser, opt, peek, verify};
 use nom::error::{context, ErrorKind, ParseError};
+use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated, tuple};
-use nom::{IResult, InputTake};
+use nom::IResult;
 use std::str;
 
 type CommitDetails<'a> = (
@@ -14,7 +15,7 @@ type CommitDetails<'a> = (
     Option<&'a str>,
     &'a str,
     Option<&'a str>,
-    Option<&'a str>,
+    Vec<(&'a str, &'a str, &'a str)>,
 );
 
 pub(crate) fn parse<'a, E: ParseError<&'a str>>(
@@ -22,10 +23,10 @@ pub(crate) fn parse<'a, E: ParseError<&'a str>>(
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
     let (i, header) = terminated(header, alt((line_ending, eof)))(i)?;
     let (i, body) = opt(preceded(line_ending, body))(i)?;
-    let (_, breaking_change) = opt(breaking_change)(i)?;
+    let (_, trailers) = many0(trailer)(i)?;
     let (type_, scope, breaking, description) = header;
 
-    Ok((type_, scope, breaking, description, body, breaking_change))
+    Ok((type_, scope, breaking, description, body, trailers))
 }
 
 #[inline]
@@ -50,13 +51,6 @@ fn is_compound_noun(s: &str) -> bool {
 
 fn is_compound_noun_char(c: char) -> bool {
     is_alphanumeric(c as u8) || c == ' ' || c == '-'
-}
-
-fn not_blank_line<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    match i.find("\n\n") {
-        Some(index) => Ok(i.take_split(index)),
-        None => Ok(("", i)),
-    }
 }
 
 fn eof<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -143,11 +137,41 @@ fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> 
     map(take(offset - 1), str::trim_end)(i)
 }
 
-fn breaking_change<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    map(
-        preceded(tag("BREAKING CHANGE: "), not_blank_line),
-        str::trim_end,
-    )(i)
+fn trailer<'a, E: ParseError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, (&'a str, &'a str, &'a str), E> {
+    tuple((trailer_key, trailer_sep, trailer_val))(i)
+}
+
+fn trailer_key<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+    alt((
+        tag("BREAKING CHANGE"),
+        take_while1(|c: char| is_alphanumeric(c as u8) || c == '-'),
+    ))(i)
+}
+
+fn trailer_sep<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+    alt((tag(": "), tag(" #")))(i)
+}
+
+fn trailer_val<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+    if i.is_empty() {
+        let err = E::from_error_kind(i, ErrorKind::Eof);
+        let err = E::add_context(i, "trailer_val", err);
+        return Err(nom::Err::Failure(err));
+    }
+
+    let mut offset = 0;
+    for line in i.lines() {
+        if peek::<_, _, E, _>(tuple((trailer_key, trailer_sep)))(line).is_ok() {
+            offset += 1;
+            break;
+        }
+
+        offset += line.chars().count() + 1;
+    }
+
+    map(take(offset - 1), str::trim_end)(i)
 }
 
 #[cfg(test)]
@@ -298,24 +322,41 @@ mod tests {
         }
 
         #[test]
-        #[rustfmt::skip]
-        fn test_breaking_change() {
-            let p = breaking_change::<VerboseError<&str>>;
+        fn test_trailer() {
+            let p = trailer::<VerboseError<&str>>;
 
             // valid
-            assert_eq!(test(p, "BREAKING CHANGE: ").unwrap(), ("", ""));
-            assert_eq!(test(p, "BREAKING CHANGE: foo bar").unwrap(), ("", "foo bar"));
-            assert_eq!(test(p, "BREAKING CHANGE: foo\nbar").unwrap(), ("", "foo\nbar"));
-            assert_eq!(test(p, "BREAKING CHANGE: 1\n2\n\n3").unwrap(), ("\n\n3", "1\n2"));
-            assert_eq!(test(p, "BREAKING CHANGE: foo    ").unwrap(), ("", "foo"));
+            assert_eq!(
+                test(p, "hello: world").unwrap(),
+                ("", ("hello", ": ", "world"))
+            );
+            assert_eq!(
+                test(p, "BREAKING CHANGE: woops!").unwrap(),
+                ("", ("BREAKING CHANGE", ": ", "woops!"))
+            );
+            assert_eq!(
+                test(p, "Co-Authored-By: Marge Simpson <marge@simpsons.com>").unwrap(),
+                (
+                    "",
+                    ("Co-Authored-By", ": ", "Marge Simpson <marge@simpsons.com>")
+                )
+            );
+            assert_eq!(test(p, "Closes #12").unwrap(), ("", ("Closes", " #", "12")));
 
             // invalid
             assert!(test(p, "").is_err());
             assert!(test(p, " ").is_err());
             assert!(test(p, "  ").is_err());
             assert!(test(p, "foo").is_err());
+            assert!(test(p, "foo:").is_err());
+            assert!(test(p, "foo: ").is_err());
+            assert!(test(p, "foo ").is_err());
+            assert!(test(p, "foo #").is_err());
             assert!(test(p, "BREAKING CHANGE").is_err());
             assert!(test(p, "BREAKING CHANGE:").is_err());
+            assert!(test(p, "Foo-Bar").is_err());
+            assert!(test(p, "Foo-Bar: ").is_err());
+            assert!(test(p, "foo").is_err());
         }
     }
 }
