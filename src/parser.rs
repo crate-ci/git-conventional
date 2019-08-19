@@ -18,15 +18,12 @@ type CommitDetails<'a> = (
 
 pub(crate) fn parse<'a, E: ParseError<&'a str>>(
     i: &'a str,
-) -> IResult<&'a str, CommitDetails<'a>, E> {
+) -> Result<CommitDetails<'a>, nom::Err<E>> {
     let (i, (type_, scope, breaking, description)) = header(i)?;
     let (i, body) = body(i)?;
-    let (i, breaking_change) = breaking_change(i)?;
+    let (_, breaking_change) = breaking_change(i)?;
 
-    Ok((
-        i,
-        (type_, scope, breaking, description, body, breaking_change),
-    ))
+    Ok((type_, scope, breaking, description, body, breaking_change))
 }
 
 #[inline]
