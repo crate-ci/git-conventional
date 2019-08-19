@@ -1,6 +1,6 @@
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
-use nom::character::complete::{char, line_ending, space0};
+use nom::character::complete::{char, line_ending};
 use nom::character::is_alphanumeric;
 use nom::combinator::{all_consuming, cut, map_parser, opt, verify};
 use nom::error::{context, ErrorKind, ParseError};
@@ -97,7 +97,18 @@ fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E>
 }
 
 fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    context("description", preceded(space0, take_till1(is_line_ending)))(i)
+    context(
+        "description",
+        verify(take_till1(is_line_ending), |s: &str| {
+            let first = s.chars().next();
+            let last = s.chars().last();
+
+            match (first, last) {
+                (Some(' '), _) | (_, Some(' ')) => false,
+                (_, _) => true,
+            }
+        }),
+    )(i)
 }
 
 #[allow(clippy::type_complexity)]
@@ -211,12 +222,14 @@ mod tests {
             assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
             assert_eq!(test(p, "foo bar\n").unwrap(), ("\n", "foo bar"));
             assert_eq!(test(p, "foo\nbar\nbaz").unwrap(), ("\nbar\nbaz", "foo"));
-            assert_eq!(test(p, "  foo").unwrap(), ("", "foo"));
 
             // invalid
             assert!(test(p, "").is_err());
             assert!(test(p, " ").is_err());
             assert!(test(p, "  ").is_err());
+            assert!(test(p, "foo ").is_err());
+            assert!(test(p, " foo").is_err());
+            assert!(test(p, " foo ").is_err());
         }
 
         #[test]

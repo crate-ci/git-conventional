@@ -39,15 +39,15 @@ pub trait Simple {
 
 impl Simple for Commit<'_> {
     fn type_(&self) -> &str {
-        self.ty.trim()
+        &self.ty
     }
 
     fn scope(&self) -> Option<&str> {
-        self.scope.as_ref().map(Deref::deref).map(str::trim)
+        self.scope.as_ref().map(Deref::deref)
     }
 
     fn description(&self) -> &str {
-        self.description.trim()
+        &self.description
     }
 
     fn body(&self) -> Option<&str> {
