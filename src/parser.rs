@@ -1,10 +1,10 @@
-use nom::bytes::complete::{tag, take, take_till1, take_while1};
-use nom::character::complete::{alphanumeric1, char, line_ending, space0};
+use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
+use nom::character::complete::{char, line_ending, space0};
 use nom::character::is_alphanumeric;
-use nom::combinator::{all_consuming, opt, peek};
+use nom::combinator::{all_consuming, cut, map_parser, opt, verify};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::sequence::{delimited, preceded, tuple};
-use nom::{FindSubstring, IResult, InputTake, Slice};
+use nom::{FindSubstring, IResult, InputTake};
 use std::str;
 
 type CommitDetails<'a> = (
@@ -38,6 +38,21 @@ const fn is_line_ending(chr: char) -> bool {
     chr == '\n'
 }
 
+/// Accepts any non-empty string slice which starts and ends with an
+/// alphanumeric character, and has any compound noun character in between.
+fn is_compound_noun(s: &str) -> bool {
+    for item in s.chars().enumerate() {
+        match item {
+            (0, chr) if !is_alphanumeric(chr as u8) => return false,
+            (i, chr) if i + 1 == s.chars().count() && !is_alphanumeric(chr as u8) => return false,
+            (_, chr) if !is_compound_noun_char(chr) => return false,
+            (_, _) => {}
+        }
+    }
+
+    !s.is_empty()
+}
+
 fn is_compound_noun_char(c: char) -> bool {
     is_alphanumeric(c as u8) || c == ' ' || c == '-'
 }
@@ -62,30 +77,20 @@ fn space<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E>
 }
 
 fn type_<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    context("type", take_while1(is_compound_noun_char))(i)
-}
-
-fn scope_block<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Option<&'a str>, E> {
-    let (rest, chars) = opt(delimited(char('('), take_while1(|c| c != ')'), char(')')))(i)?;
-
-    if rest.starts_with("()") {
-        let rest = &rest.slice(1..);
-        let err = E::from_error_kind(rest, ErrorKind::Verify);
-        let err = E::add_context(rest, "scope_block", err);
-
-        return Err(nom::Err::Error(err));
-    };
-
-    match chars {
-        None => Ok((rest, None)),
-        Some(chars) => scope(chars).map(|(_, s)| (rest, Some(s))),
-    }
+    context(
+        "type",
+        verify(take_while1(is_compound_noun_char), is_compound_noun),
+    )(i)
 }
 
 fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    let _ = peek(alphanumeric1)(i)?;
-
-    context("scope", all_consuming(take_while1(is_compound_noun_char)))(i)
+    context(
+        "scope",
+        map_parser(
+            take_till1(|c: char| c == ')'),
+            all_consuming(verify(take_while(is_compound_noun_char), is_compound_noun)),
+        ),
+    )(i)
 }
 
 fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -97,7 +102,7 @@ fn header<'a, E: ParseError<&'a str>>(
 ) -> IResult<&'a str, (&'a str, Option<&'a str>, bool, &'a str), E> {
     tuple((
         type_,
-        scope_block,
+        opt(delimited(char('('), cut(scope), char(')'))),
         opt(exclamation_mark),
         colon,
         space,
@@ -164,10 +169,13 @@ mod tests {
 
             // invalid
             assert!(test(p, "").is_err());
-            // assert!(test(p, " ").is_err());
-            // assert!(test(p, "  ").is_err());
+            assert!(test(p, " ").is_err());
+            assert!(test(p, "  ").is_err());
             assert!(test(p, ")").is_err());
             assert!(test(p, "@").is_err());
+            assert!(test(p, " feat").is_err());
+            assert!(test(p, "feat ").is_err());
+            assert!(test(p, " feat ").is_err());
         }
 
         #[test]
@@ -189,26 +197,7 @@ mod tests {
             assert!(test(p, "-foo").is_err());
             assert!(test(p, "_foo").is_err());
             assert!(test(p, "foo_bar").is_err());
-            // assert!(test(p, "foo ").is_err());
-        }
-
-        #[test]
-        fn test_scope_block() {
-            let p = scope_block::<VerboseError<&str>>;
-
-            // valid
-            assert_eq!(test(p, "").unwrap(), ("", None));
-            assert_eq!(test(p, " ").unwrap(), (" ", None));
-            assert_eq!(test(p, "(").unwrap(), ("(", None));
-            assert_eq!(test(p, ")").unwrap(), (")", None));
-            assert_eq!(test(p, "a").unwrap(), ("a", None));
-            assert_eq!(test(p, "(foo)").unwrap(), ("", Some("foo")));
-            assert_eq!(test(p, "(foo)bar").unwrap(), ("bar", Some("foo")));
-
-            // invalid
-            assert!(test(p, "()").is_err());
-            assert!(test(p, "() foo").is_err());
-            // assert!(test(p, "(foo bar)").is_err());
+            assert!(test(p, "foo ").is_err());
         }
 
         #[test]
