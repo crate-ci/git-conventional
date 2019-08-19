@@ -5,23 +5,24 @@
 //! # Example
 //!
 //! ```rust
+//! use indoc::indoc;
 //! use conventional::{Commit, Error, Simple as _};
 //! use std::str::FromStr;
 //!
 //! fn main() -> Result<(), Error> {
-//!     let message = "\
-//!     docs(example)!: add tested usage example
+//!     let message = indoc!("
+//!         docs(example)!: add tested usage example
 //!
-//!     This example is tested using Rust's doctest capabilities. Having this
-//!     example helps people understand how to use the parser.
-//!     \n\
-//!     BREAKING CHANGE: Going from nothing to something, meaning anyone doing
-//!     nothing before suddenly has something to do. That sounds like a change
-//!     in your break.
-//!     \n\
-//!     Co-Authored-By: Lisa Simpson <lisa@simpsons.fam>\n\
-//!     Closes #12
-//!     ";
+//!         This example is tested using Rust's doctest capabilities. Having this
+//!         example helps people understand how to use the parser.
+//!
+//!         BREAKING CHANGE: Going from nothing to something, meaning anyone doing
+//!         nothing before suddenly has something to do. That sounds like a change
+//!         in your break.
+//!
+//!         Co-Authored-By: Lisa Simpson <lisa@simpsons.fam>
+//!         Closes #12
+//!     ");
 //!
 //!     let commit = Commit::new(message)?;
 //!
@@ -105,6 +106,7 @@ pub use error::{Error, Kind as ErrorKind};
 #[allow(clippy::result_unwrap_used)]
 mod tests {
     use super::{Commit, ErrorKind, Simple as _};
+    use indoc::indoc;
 
     #[test]
     fn test_valid_simple_commit() {
@@ -121,7 +123,13 @@ mod tests {
         assert_eq!("feat", commit.type_());
         assert!(commit.breaking());
 
-        let commit = Commit::new("feat: message\n\nBREAKING CHANGE: breaking change").unwrap();
+        let commit = Commit::new(indoc!(
+            "feat: message
+
+            BREAKING CHANGE: breaking change"
+        ))
+        .unwrap();
+
         assert_eq!("feat", commit.type_());
         assert_eq!(
             "breaking change",
@@ -132,12 +140,14 @@ mod tests {
 
     #[test]
     fn test_valid_complex_commit() {
-        let commit = "chore: improve changelog readability\n\
-                      \n\
-                      Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a tiny bit \
-                      easier to parse while reading.\n\
-                      \n\
-                      BREAKING CHANGE: Just kidding!";
+        let commit = indoc! {"
+            chore: improve changelog readability
+
+            Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a tiny bit
+            easier to parse while reading.
+
+            BREAKING CHANGE: Just kidding!
+        "};
 
         let commit = Commit::new(commit).unwrap();
 
@@ -145,10 +155,10 @@ mod tests {
         assert_eq!(None, commit.scope());
         assert_eq!("improve changelog readability", commit.description());
         assert_eq!(
-            Some(
-                "Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a tiny bit \
+            Some(indoc!(
+                "Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a tiny bit
                  easier to parse while reading."
-            ),
+            )),
             commit.body()
         );
         assert_eq!("Just kidding!", &*commit.trailers().get(0).unwrap().value());
