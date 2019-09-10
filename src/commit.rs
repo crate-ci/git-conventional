@@ -37,7 +37,10 @@ impl<'a> Commit<'a> {
             scope: scope.map(Into::into),
             description: description.into(),
             body: body.map(Into::into),
-            breaking: breaking.is_some() || footers.iter().any(|(k, _, _)| k == &"BREAKING CHANGE"),
+            breaking: breaking.is_some()
+                || footers
+                    .iter()
+                    .any(|(k, _, _)| k == &"BREAKING-CHANGE" || k == &"BREAKING CHANGE"),
             footers: footers.into_iter().map(Into::into).collect(),
         })
     }

@@ -123,7 +123,7 @@ fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> 
 
     let mut offset = 0;
     for line in i.lines() {
-        if line.starts_with("BREAKING CHANGE: ") {
+        if peek::<_, _, E, _>(tuple((footer_token, footer_separator)))(line).is_ok() {
             offset += 1;
             break;
         }
@@ -320,6 +320,18 @@ mod tests {
                 test(p, "foo\n\nBREAKING CHANGE: oops!").unwrap(),
                 ("BREAKING CHANGE: oops!", "foo")
             );
+            assert_eq!(
+                test(p, "foo\n\nBREAKING-CHANGE: bar").unwrap(),
+                ("BREAKING-CHANGE: bar", "foo")
+            );
+            assert_eq!(
+                test(p, "foo\n\nMy-Footer: bar").unwrap(),
+                ("My-Footer: bar", "foo")
+            );
+            assert_eq!(
+                test(p, "foo\n\nMy-Footer #bar").unwrap(),
+                ("My-Footer #bar", "foo")
+            );
 
             // invalid
             assert!(test(p, "").is_err());
@@ -346,6 +358,10 @@ mod tests {
                 )
             );
             assert_eq!(test(p, "Closes #12").unwrap(), ("", ("Closes", " #", "12")));
+            assert_eq!(
+                test(p, "BREAKING-CHANGE: broken").unwrap(),
+                ("", ("BREAKING-CHANGE", ": ", "broken"))
+            );
 
             // invalid
             assert!(test(p, "").is_err());

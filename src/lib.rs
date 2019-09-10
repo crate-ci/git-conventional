@@ -140,6 +140,17 @@ mod tests {
             &*commit.footers().get(0).unwrap().value()
         );
         assert!(commit.breaking());
+
+        let commit = Commit::new(indoc!(
+            "fix: message
+
+            BREAKING-CHANGE: it's broken"
+        ))
+        .unwrap();
+
+        assert_eq!("fix", commit.type_());
+        assert_eq!("it's broken", &*commit.footers().get(0).unwrap().value());
+        assert!(commit.breaking());
     }
 
     #[test]
