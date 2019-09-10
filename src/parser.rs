@@ -200,6 +200,9 @@ mod tests {
 
             // valid
             assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
+            assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
+            assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
+            assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
             assert_eq!(test(p, "foo2bar").unwrap(), ("2bar", "foo"));
             assert_eq!(test(p, "foo-bar").unwrap(), ("-bar", "foo"));
             assert_eq!(test(p, "foo bar").unwrap(), (" bar", "foo"));
