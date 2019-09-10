@@ -226,6 +226,9 @@ mod tests {
 
             // valid
             assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
+            assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
+            assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
+            assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
             assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
             assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
 
@@ -248,6 +251,9 @@ mod tests {
 
             // valid
             assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
+            assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
+            assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
+            assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
             assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
             assert_eq!(test(p, "foo bar\n").unwrap(), ("\n", "foo bar"));
             assert_eq!(test(p, "foo\nbar\nbaz").unwrap(), ("\nbar\nbaz", "foo"));
@@ -312,6 +318,10 @@ mod tests {
             let p = body::<VerboseError<&str>>;
 
             // valid
+            assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
+            assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
+            assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
+            assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
             assert_eq!(test(p, "    code block").unwrap(), ("", "    code block"));
             assert_eq!(test(p, "💃🏽").unwrap(), ("", "💃🏽"));
             assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
