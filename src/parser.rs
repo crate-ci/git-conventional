@@ -1,7 +1,7 @@
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
-use nom::character::{is_alphabetic, is_alphanumeric};
+use nom::character::is_alphabetic;
 use nom::combinator::{all_consuming, cut, map, map_parser, opt, peek, verify};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::multi::many0;
@@ -34,13 +34,13 @@ const fn is_line_ending(chr: char) -> bool {
     chr == '\n'
 }
 
-/// Accepts any non-empty string slice which starts and ends with an
-/// alphanumeric character, and has any compound noun character in between.
+/// Accepts any non-empty string slice which starts and ends with an alphabetic
+/// character, and has any compound noun character in between.
 fn is_compound_noun(s: &str) -> bool {
     for item in s.chars().enumerate() {
         match item {
-            (0, chr) if !is_alphanumeric(chr as u8) => return false,
-            (i, chr) if i + 1 == s.chars().count() && !is_alphanumeric(chr as u8) => return false,
+            (0, chr) if !is_alphabetic(chr as u8) => return false,
+            (i, chr) if i + 1 == s.chars().count() && !is_alphabetic(chr as u8) => return false,
             (_, chr) if !is_compound_noun_char(chr) => return false,
             (_, _) => {}
         }
@@ -50,7 +50,7 @@ fn is_compound_noun(s: &str) -> bool {
 }
 
 fn is_compound_noun_char(c: char) -> bool {
-    is_alphanumeric(c as u8) || c == ' ' || c == '-'
+    is_alphabetic(c as u8) || c == ' ' || c == '-'
 }
 
 fn eof<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -143,7 +143,7 @@ fn footer<'a, E: ParseError<&'a str>>(
 fn footer_token<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     alt((
         tag("BREAKING CHANGE"),
-        take_while1(|c: char| is_alphanumeric(c as u8) || c == '-'),
+        take_while1(|c: char| is_alphabetic(c as u8) || c == '-'),
     ))(i)
 }
 
@@ -227,7 +227,6 @@ mod tests {
             // valid
             assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
             assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
-            assert_eq!(test(p, "foo2bar").unwrap(), ("", "foo2bar"));
             assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
 
             // invalid
@@ -240,6 +239,7 @@ mod tests {
             assert!(test(p, "_foo").is_err());
             assert!(test(p, "foo_bar").is_err());
             assert!(test(p, "foo ").is_err());
+            assert!(test(p, "foo2bar").is_err());
         }
 
         #[test]
