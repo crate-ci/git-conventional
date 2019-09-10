@@ -3,7 +3,7 @@
 pub(crate) mod simple;
 pub(crate) mod typed;
 
-use crate::component::{Body, Description, Scope, Trailer, Type};
+use crate::component::{Body, Description, Footer, Scope, Type};
 use crate::error::Error;
 use crate::parser::parse;
 use nom::error::VerboseError;
@@ -17,7 +17,7 @@ pub struct Commit<'a> {
     description: Description<'a>,
     body: Option<Body<'a>>,
     breaking: bool,
-    trailers: Vec<Trailer<'a>>,
+    footers: Vec<Footer<'a>>,
 }
 
 impl<'a> Commit<'a> {
@@ -29,7 +29,7 @@ impl<'a> Commit<'a> {
     /// This function returns an error if the commit does not conform to the
     /// Conventional Commit specification.
     pub fn new(string: &'a str) -> Result<Self, Error> {
-        let (ty, scope, breaking, description, body, trailers) =
+        let (ty, scope, breaking, description, body, footers) =
             parse::<VerboseError<&'a str>>(string).map_err(|err| (string, err))?;
 
         Ok(Self {
@@ -37,9 +37,8 @@ impl<'a> Commit<'a> {
             scope: scope.map(Into::into),
             description: description.into(),
             body: body.map(Into::into),
-            breaking: breaking.is_some()
-                || trailers.iter().any(|(k, _, _)| k == &"BREAKING CHANGE"),
-            trailers: trailers.into_iter().map(Into::into).collect(),
+            breaking: breaking.is_some() || footers.iter().any(|(k, _, _)| k == &"BREAKING CHANGE"),
+            footers: footers.into_iter().map(Into::into).collect(),
         })
     }
 }
@@ -60,8 +59,8 @@ impl fmt::Display for Commit<'_> {
             f.write_fmt(format_args!("\n\n{}", body))?;
         }
 
-        for t in self.trailers() {
-            write!(f, "\n\n{}{}{}", t.key(), t.separator(), t.value())?;
+        for t in self.footers() {
+            write!(f, "\n\n{}{}{}", t.token(), t.separator(), t.value())?;
         }
 
         Ok(())

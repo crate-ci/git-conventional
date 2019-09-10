@@ -3,70 +3,73 @@
 use std::fmt;
 use std::ops::Deref;
 
-/// A single Git trailer.
+/// A single footer.
+///
+/// A footer is similar to a Git trailer, with the exception of not requiring
+/// whitespace before newlines.
 ///
 /// See: <https://git-scm.com/docs/git-interpret-trailers>
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct Trailer<'a> {
-    key: TrailerKey<'a>,
-    sep: TrailerSeparator,
-    value: TrailerValue<'a>,
+pub struct Footer<'a> {
+    token: FooterToken<'a>,
+    sep: FooterSeparator,
+    value: FooterValue<'a>,
 }
 
-impl<'a> Trailer<'a> {
-    /// The key of the trailer.
-    pub const fn key(&self) -> TrailerKey<'a> {
-        self.key
+impl<'a> Footer<'a> {
+    /// The token of the footer.
+    pub const fn token(&self) -> FooterToken<'a> {
+        self.token
     }
 
-    /// The separator between the trailer key and its value.
-    pub const fn separator(&self) -> TrailerSeparator {
+    /// The separator between the footer token and its value.
+    pub const fn separator(&self) -> FooterSeparator {
         self.sep
     }
 
-    /// The value of the trailer.
-    pub const fn value(&self) -> TrailerValue<'a> {
+    /// The value of the footer.
+    pub const fn value(&self) -> FooterValue<'a> {
         self.value
     }
 }
 
-impl<'a> From<(&'a str, &'a str, &'a str)> for Trailer<'a> {
-    fn from((key, sep, value): (&'a str, &'a str, &'a str)) -> Self {
+impl<'a> From<(&'a str, &'a str, &'a str)> for Footer<'a> {
+    fn from((token, sep, value): (&'a str, &'a str, &'a str)) -> Self {
         Self {
-            key: TrailerKey(key),
+            token: FooterToken(token),
             sep: sep.into(),
-            value: TrailerValue(value),
+            value: FooterValue(value),
         }
     }
 }
 
-/// The "simple trailer" variant, for convenient access to the string slice
+/// The "simple footer" variant, for convenient access to the string slice
 /// values of its components.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct SimpleTrailer<'a> {
-    pub(crate) trailer: &'a Trailer<'a>,
+pub struct SimpleFooter<'a> {
+    pub(crate) footer: &'a Footer<'a>,
 }
 
-impl<'a> SimpleTrailer<'a> {
-    /// The key of the trailer.
-    pub fn key(&self) -> &str {
-        &*self.trailer.key
+impl<'a> SimpleFooter<'a> {
+    /// The token of the footer.
+    pub fn token(&self) -> &str {
+        &*self.footer.token
     }
 
-    /// The separator between the trailer key and its value.
+    /// The separator between the footer token and its value.
     pub fn separator(&self) -> &str {
-        &*self.trailer.sep
+        &*self.footer.sep
     }
 
-    /// The value of the trailer.
+    /// The value of the footer.
     pub fn value(&self) -> &str {
-        &*self.trailer.value
+        &*self.footer.value
     }
 }
 
-/// The type of separator between the trailer key and value.
+/// The type of separator between the footer token and value.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum TrailerSeparator {
+pub enum FooterSeparator {
     /// ": "
     ColonSpace,
 
@@ -74,31 +77,31 @@ pub enum TrailerSeparator {
     SpacePound,
 }
 
-impl Deref for TrailerSeparator {
+impl Deref for FooterSeparator {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
         match self {
-            TrailerSeparator::ColonSpace => ": ",
-            TrailerSeparator::SpacePound => " #",
+            FooterSeparator::ColonSpace => ": ",
+            FooterSeparator::SpacePound => " #",
         }
     }
 }
 
-impl fmt::Display for TrailerSeparator {
+impl fmt::Display for FooterSeparator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TrailerSeparator::ColonSpace => f.write_str(": "),
-            TrailerSeparator::SpacePound => f.write_str(" #"),
+            FooterSeparator::ColonSpace => f.write_str(": "),
+            FooterSeparator::SpacePound => f.write_str(" #"),
         }
     }
 }
 
-impl From<&str> for TrailerSeparator {
+impl From<&str> for FooterSeparator {
     fn from(sep: &str) -> Self {
         match sep {
-            ": " => TrailerSeparator::ColonSpace,
-            " #" => TrailerSeparator::SpacePound,
+            ": " => FooterSeparator::ColonSpace,
+            " #" => FooterSeparator::SpacePound,
             _ => unreachable!(),
         }
     }
@@ -134,4 +137,4 @@ macro_rules! components {
     )
 }
 
-components![Type, Scope, Description, Body, TrailerKey, TrailerValue];
+components![Type, Scope, Description, Body, FooterToken, FooterValue];

@@ -1,6 +1,6 @@
 //! Conventional Commit implementations.
 
-use crate::{Commit, SimpleTrailer};
+use crate::{Commit, SimpleFooter};
 use std::ops::Deref;
 
 /// The weakly-typed variant of a commit.
@@ -26,17 +26,20 @@ pub trait Simple {
     ///   feat(scope)!: this is a breaking change
     ///   feat!: this is a breaking change
     ///
-    /// Or when the `BREAKING CHANGE: ` trailer is defined:
+    /// Or when the `BREAKING CHANGE: ` footer is defined:
     ///
     ///   feat: my commit description
     ///
     ///   BREAKING CHANGE: this is a breaking change
     fn breaking(&self) -> bool;
 
-    /// Any Git trailers.
+    /// Any footer.
+    ///
+    /// A footer is similar to a Git trailer, with the exception of not
+    /// requiring whitespace before newlines.
     ///
     /// See: <https://git-scm.com/docs/git-interpret-trailers>
-    fn trailers(&self) -> Vec<SimpleTrailer<'_>>;
+    fn footers(&self) -> Vec<SimpleFooter<'_>>;
 }
 
 impl Simple for Commit<'_> {
@@ -60,10 +63,10 @@ impl Simple for Commit<'_> {
         self.breaking
     }
 
-    fn trailers(&self) -> Vec<SimpleTrailer<'_>> {
-        self.trailers
+    fn footers(&self) -> Vec<SimpleFooter<'_>> {
+        self.footers
             .iter()
-            .map(|trailer| SimpleTrailer { trailer })
+            .map(|footer| SimpleFooter { footer })
             .collect::<Vec<_>>()
     }
 }

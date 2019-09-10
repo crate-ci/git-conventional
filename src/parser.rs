@@ -23,10 +23,10 @@ pub(crate) fn parse<'a, E: ParseError<&'a str>>(
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
     let (i, header) = terminated(header, alt((line_ending, eof)))(i)?;
     let (i, body) = opt(preceded(line_ending, body))(i)?;
-    let (_, trailers) = many0(trailer)(i)?;
+    let (_, footers) = many0(footer)(i)?;
     let (type_, scope, breaking, description) = header;
 
-    Ok((type_, scope, breaking, description, body, trailers))
+    Ok((type_, scope, breaking, description, body, footers))
 }
 
 #[inline]
@@ -134,33 +134,33 @@ fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> 
     map(take(offset - 1), str::trim_end)(i)
 }
 
-fn trailer<'a, E: ParseError<&'a str>>(
+fn footer<'a, E: ParseError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, &'a str, &'a str), E> {
-    tuple((trailer_key, trailer_sep, trailer_val))(i)
+    tuple((footer_token, footer_separator, footer_value))(i)
 }
 
-fn trailer_key<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn footer_token<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     alt((
         tag("BREAKING CHANGE"),
         take_while1(|c: char| is_alphanumeric(c as u8) || c == '-'),
     ))(i)
 }
 
-fn trailer_sep<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn footer_separator<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     alt((tag(": "), tag(" #")))(i)
 }
 
-fn trailer_val<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn footer_value<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
-        let err = E::add_context(i, "trailer_val", err);
+        let err = E::add_context(i, "footer_value", err);
         return Err(nom::Err::Failure(err));
     }
 
     let mut offset = 0;
     for line in i.lines() {
-        if peek::<_, _, E, _>(tuple((trailer_key, trailer_sep)))(line).is_ok() {
+        if peek::<_, _, E, _>(tuple((footer_token, footer_separator)))(line).is_ok() {
             offset += 1;
             break;
         }
@@ -326,8 +326,8 @@ mod tests {
         }
 
         #[test]
-        fn test_trailer() {
-            let p = trailer::<VerboseError<&str>>;
+        fn test_footer() {
+            let p = footer::<VerboseError<&str>>;
 
             // valid
             assert_eq!(

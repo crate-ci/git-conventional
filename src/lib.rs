@@ -34,20 +34,20 @@
 //!     // And the free-form commit body.
 //!     assert!(commit.body().unwrap().contains("helps people understand"));
 //!
-//!     // If a commit is marked with a bang (`!`) OR has a trailer with the key
+//!     // If a commit is marked with a bang (`!`) OR has a footer with the key
 //!     // "BREAKING CHANGE", it is considered a "breaking" commit.
 //!     assert!(commit.breaking());
 //!
-//!     // You can access each trailer individually.
-//!     assert!(commit.trailers().get(0).unwrap().value().contains("That sounds like a change"));
+//!     // You can access each footer individually.
+//!     assert!(commit.footers().get(0).unwrap().value().contains("That sounds like a change"));
 //!
-//!     // Trailers provide access to their key and value.
-//!     assert_eq!(commit.trailers().get(1).unwrap().key(), "Co-Authored-By");
-//!     assert_eq!(commit.trailers().get(1).unwrap().value(), "Lisa Simpson <lisa@simpsons.fam>");
+//!     // Footers provide access to their token and value.
+//!     assert_eq!(commit.footers().get(1).unwrap().token(), "Co-Authored-By");
+//!     assert_eq!(commit.footers().get(1).unwrap().value(), "Lisa Simpson <lisa@simpsons.fam>");
 //!
 //!     // Two types of separators are supported, regular ": ", and " #":
-//!     assert_eq!(commit.trailers().get(2).unwrap().separator(), " #");
-//!     assert_eq!(commit.trailers().get(2).unwrap().value(), "12");
+//!     assert_eq!(commit.footers().get(2).unwrap().separator(), " #");
+//!     assert_eq!(commit.footers().get(2).unwrap().value(), "12");
 //!     # Ok(())
 //! }
 //! ```
@@ -96,13 +96,13 @@ mod error;
 mod parser;
 
 pub use commit::{simple::Simple, typed::Typed, Commit};
-pub use component::SimpleTrailer;
+pub use component::SimpleFooter;
 pub use error::{Error, Kind as ErrorKind};
 
 /// Strictly-typed accessors for a `Commit`.
 pub mod typed {
     pub use super::component::{
-        Body, Description, Scope, Trailer, TrailerKey, TrailerSeparator, TrailerValue, Type,
+        Body, Description, Footer, FooterSeparator, FooterToken, FooterValue, Scope, Type,
     };
 }
 
@@ -137,7 +137,7 @@ mod tests {
         assert_eq!("feat", commit.type_());
         assert_eq!(
             "breaking change",
-            &*commit.trailers().get(0).unwrap().value()
+            &*commit.footers().get(0).unwrap().value()
         );
         assert!(commit.breaking());
     }
@@ -165,7 +165,7 @@ mod tests {
             )),
             commit.body()
         );
-        assert_eq!("Just kidding!", &*commit.trailers().get(0).unwrap().value());
+        assert_eq!("Just kidding!", &*commit.footers().get(0).unwrap().value());
     }
 
     #[test]

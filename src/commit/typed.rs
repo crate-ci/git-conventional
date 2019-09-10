@@ -2,7 +2,7 @@
 //! Conventional Commit implementations.
 //! Conventional Commit implementations.
 
-use crate::typed::{Body, Description, Scope, Trailer, Type};
+use crate::typed::{Body, Description, Footer, Scope, Type};
 use crate::Commit;
 
 /// The strongly-typed variant of a commit.
@@ -28,17 +28,20 @@ pub trait Typed<'a> {
     ///   feat(scope)!: this is a breaking change
     ///   feat!: this is a breaking change
     ///
-    /// Or when the `BREAKING CHANGE: ` trailer is defined:
+    /// Or when the `BREAKING CHANGE: ` footer is defined:
     ///
     ///   feat: my commit description
     ///
     ///   BREAKING CHANGE: this is a breaking change
     fn breaking(&self) -> bool;
 
-    /// Any Git trailers.
+    /// Any footer.
+    ///
+    /// A footer is similar to a Git trailer, with the exception of not
+    /// requiring whitespace before newlines.
     ///
     /// See: <https://git-scm.com/docs/git-interpret-trailers>
-    fn trailers(&self) -> &[Trailer<'_>];
+    fn footers(&self) -> &[Footer<'_>];
 }
 
 impl<'a> Typed<'a> for Commit<'a> {
@@ -62,7 +65,7 @@ impl<'a> Typed<'a> for Commit<'a> {
         self.breaking
     }
 
-    fn trailers(&self) -> &[Trailer<'_>] {
-        &self.trailers
+    fn footers(&self) -> &[Footer<'_>] {
+        &self.footers
     }
 }
