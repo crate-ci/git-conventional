@@ -1,7 +1,7 @@
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
-use nom::character::is_alphanumeric;
+use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::combinator::{all_consuming, cut, map, map_parser, opt, peek, verify};
 use nom::error::{context, ErrorKind, ParseError};
 use nom::multi::many0;
@@ -74,10 +74,7 @@ fn space<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E>
 }
 
 fn type_<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    context(
-        "type",
-        verify(take_while1(is_compound_noun_char), is_compound_noun),
-    )(i)
+    context("type", take_while1(|c: char| is_alphabetic(c as u8)))(i)
 }
 
 fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
@@ -202,10 +199,13 @@ mod tests {
             let p = type_::<VerboseError<&str>>;
 
             // valid
-            assert_eq!(test(p, "foo2bar").unwrap(), ("", "foo2bar"));
-            assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
-            assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
+            assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
+            assert_eq!(test(p, "foo2bar").unwrap(), ("2bar", "foo"));
+            assert_eq!(test(p, "foo-bar").unwrap(), ("-bar", "foo"));
+            assert_eq!(test(p, "foo bar").unwrap(), (" bar", "foo"));
+            assert_eq!(test(p, "foo: bar").unwrap(), (": bar", "foo"));
             assert_eq!(test(p, "foo(bar").unwrap(), ("(bar", "foo"));
+            assert_eq!(test(p, "foo ").unwrap(), (" ", "foo"));
 
             // invalid
             assert!(test(p, "").is_err());
@@ -214,7 +214,6 @@ mod tests {
             assert!(test(p, ")").is_err());
             assert!(test(p, "@").is_err());
             assert!(test(p, " feat").is_err());
-            assert!(test(p, "feat ").is_err());
             assert!(test(p, " feat ").is_err());
         }
 
@@ -287,6 +286,8 @@ mod tests {
             assert!(test(p, "  ").is_err());
             assert!(test(p, "foo").is_err());
             assert!(test(p, "foo bar").is_err());
+            assert!(test(p, "foo : bar").is_err());
+            assert!(test(p, "foo bar: baz").is_err());
             assert!(test(p, "foo(: bar").is_err());
             assert!(test(p, "foo): bar").is_err());
             assert!(test(p, "foo(): bar").is_err());
@@ -295,8 +296,8 @@ mod tests {
             assert!(test(p, "foo(bar): ").is_err());
             assert!(test(p, "foo(bar) :baz").is_err());
             assert!(test(p, "foo(bar) : baz").is_err());
-            // assert!(test(p, "foo bar(baz): qux").is_err());
-            // assert!(test(p, "foo(bar baz): qux").is_err());
+            assert!(test(p, "foo (bar): baz").is_err());
+            assert!(test(p, "foo bar(baz): qux").is_err());
         }
     }
 

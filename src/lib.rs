@@ -114,9 +114,9 @@ mod tests {
 
     #[test]
     fn test_valid_simple_commit() {
-        let commit = Commit::new("my type(my scope): hello world").unwrap();
+        let commit = Commit::new("type(my scope): hello world").unwrap();
 
-        assert_eq!("my type", commit.type_());
+        assert_eq!("type", commit.type_());
         assert_eq!(Some("my scope"), commit.scope());
         assert_eq!("hello world", commit.description());
     }
@@ -180,9 +180,9 @@ mod tests {
 
         #[test]
         fn test_typed_commit() {
-            let commit = Commit::new("my type(my scope): hello world").unwrap();
+            let commit = Commit::new("type(my scope): hello world").unwrap();
 
-            assert_eq!(Type("my type"), commit.type_());
+            assert_eq!(Type("type"), commit.type_());
             assert_eq!(Some(Scope("my scope")), commit.scope());
             assert_eq!(Description("hello world"), commit.description());
         }
