@@ -36,9 +36,9 @@ impl<'a> Footer<'a> {
 impl<'a> From<(&'a str, &'a str, &'a str)> for Footer<'a> {
     fn from((token, sep, value): (&'a str, &'a str, &'a str)) -> Self {
         Self {
-            token: FooterToken(token),
+            token: FooterToken::new(token),
             sep: sep.into(),
-            value: FooterValue(value),
+            value: FooterValue::new(value),
         }
     }
 }
@@ -112,7 +112,14 @@ macro_rules! components {
         $(
             /// A component of the conventional commit.
             #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-            pub struct $ty<'a>(pub &'a str);
+            pub struct $ty<'a>(&'a str);
+
+            impl<'a> $ty<'a> {
+                /// Create a $ty
+                pub fn new(value: &'a str) -> Self {
+                    $ty(value)
+                }
+            }
 
             impl Deref for $ty<'_> {
                 type Target = str;

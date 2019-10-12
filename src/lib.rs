@@ -193,9 +193,9 @@ mod tests {
         fn test_typed_commit() {
             let commit = Commit::new("type(my scope): hello world").unwrap();
 
-            assert_eq!(Type("type"), commit.type_());
-            assert_eq!(Some(Scope("my scope")), commit.scope());
-            assert_eq!(Description("hello world"), commit.description());
+            assert_eq!(Type::new("type"), commit.type_());
+            assert_eq!(Some(Scope::new("my scope")), commit.scope());
+            assert_eq!(Description::new("hello world"), commit.description());
         }
     }
 }
