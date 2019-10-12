@@ -108,16 +108,53 @@ impl From<&str> for FooterSeparator {
 }
 
 macro_rules! components {
+($($ty:ident),+) => (
+    $(
+        /// A component of the conventional commit.
+        #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+        pub struct $ty<'a>(&'a str);
+
+        impl<'a> $ty<'a> {
+            /// Create a $ty
+            pub fn new(value: &'a str) -> Self {
+                $ty(value)
+            }
+        }
+
+        impl Deref for $ty<'_> {
+            type Target = str;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl fmt::Display for $ty<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        impl<'a> From<&'a str> for $ty<'a> {
+            fn from(string: &'a str) -> Self {
+                Self(string)
+            }
+        }
+    )+
+)
+}
+
+macro_rules! unicase_components {
     ($($ty:ident),+) => (
         $(
             /// A component of the conventional commit.
             #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-            pub struct $ty<'a>(&'a str);
+            pub struct $ty<'a>(unicase::UniCase<&'a str>);
 
             impl<'a> $ty<'a> {
                 /// Create a $ty
                 pub fn new(value: &'a str) -> Self {
-                    $ty(value)
+                    $ty(unicase::UniCase::new(value))
                 }
             }
 
@@ -125,7 +162,7 @@ macro_rules! components {
                 type Target = str;
 
                 fn deref(&self) -> &Self::Target {
-                    &self.0
+                    &self.0.into_inner()
                 }
             }
 
@@ -137,11 +174,13 @@ macro_rules! components {
 
             impl<'a> From<&'a str> for $ty<'a> {
                 fn from(string: &'a str) -> Self {
-                    Self(string)
+                    Self(unicase::UniCase::new(string))
                 }
             }
         )+
     )
 }
 
-components![Type, Scope, Description, Body, FooterToken, FooterValue];
+components![Description, Body, FooterValue];
+
+unicase_components![Type, Scope, FooterToken];
