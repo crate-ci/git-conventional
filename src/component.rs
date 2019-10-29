@@ -134,12 +134,4 @@ macro_rules! components {
     )
 }
 
-components![
-    Type,
-    Scope,
-    Description,
-    Body,
-    BreakingChange,
-    TrailerKey,
-    TrailerValue
-];
+components![Type, Scope, Description, Body, TrailerKey, TrailerValue];
