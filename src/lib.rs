@@ -90,17 +90,21 @@
 )]
 #![doc(html_root_url = "https://docs.rs/conventional")]
 
-pub mod commit;
-pub mod component;
-pub mod error;
+mod commit;
+mod component;
+mod error;
 mod parser;
 
 pub use commit::{simple::Simple, typed::Typed, Commit};
-pub use component::{
-    Body, Description, Scope, SimpleTrailer, Trailer, TrailerKey, TrailerSeparator, TrailerValue,
-    Type,
-};
+pub use component::SimpleTrailer;
 pub use error::{Error, Kind as ErrorKind};
+
+/// Strictly-typed accessors for a `Commit`.
+pub mod typed {
+    pub use super::component::{
+        Body, Description, Scope, Trailer, TrailerKey, TrailerSeparator, TrailerValue, Type,
+    };
+}
 
 #[cfg(test)]
 #[allow(clippy::result_unwrap_used)]

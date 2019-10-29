@@ -1,7 +1,7 @@
 //! The conventional commit type and its simple, and typed implementations.
 
-pub mod simple;
-pub mod typed;
+pub(crate) mod simple;
+pub(crate) mod typed;
 
 use crate::component::{Body, Description, Scope, Trailer, Type};
 use crate::error::Error;

@@ -2,7 +2,8 @@
 //! Conventional Commit implementations.
 //! Conventional Commit implementations.
 
-use crate::{Body, Commit, Description, Scope, Trailer, Type};
+use crate::typed::{Body, Description, Scope, Trailer, Type};
+use crate::Commit;
 
 /// The strongly-typed variant of a commit.
 pub trait Typed<'a> {
