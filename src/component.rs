@@ -75,6 +75,9 @@ pub enum FooterSeparator {
 
     /// " #"
     SpacePound,
+
+    #[doc(hidden)]
+    __NonExhaustive,
 }
 
 impl Deref for FooterSeparator {
@@ -84,16 +87,14 @@ impl Deref for FooterSeparator {
         match self {
             FooterSeparator::ColonSpace => ": ",
             FooterSeparator::SpacePound => " #",
+            FooterSeparator::__NonExhaustive => "",
         }
     }
 }
 
 impl fmt::Display for FooterSeparator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FooterSeparator::ColonSpace => f.write_str(": "),
-            FooterSeparator::SpacePound => f.write_str(" #"),
-        }
+        f.write_str(self)
     }
 }
 
