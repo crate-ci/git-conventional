@@ -1,7 +1,9 @@
 //! Conventional Commit components.
 
+use crate::{Error, ErrorKind};
 use std::fmt;
 use std::ops::Deref;
+use std::str::FromStr;
 
 /// A single footer.
 ///
@@ -17,6 +19,11 @@ pub struct Footer<'a> {
 }
 
 impl<'a> Footer<'a> {
+    /// Piece together a footer.
+    pub const fn new(token: FooterToken<'a>, sep: FooterSeparator, value: FooterValue<'a>) -> Self {
+        Self { token, sep, value }
+    }
+
     /// The token of the footer.
     pub const fn token(&self) -> FooterToken<'a> {
         self.token
@@ -30,16 +37,6 @@ impl<'a> Footer<'a> {
     /// The value of the footer.
     pub const fn value(&self) -> FooterValue<'a> {
         self.value
-    }
-}
-
-impl<'a> From<(&'a str, &'a str, &'a str)> for Footer<'a> {
-    fn from((token, sep, value): (&'a str, &'a str, &'a str)) -> Self {
-        Self {
-            token: FooterToken::new(token),
-            sep: sep.into(),
-            value: FooterValue::new(value),
-        }
     }
 }
 
@@ -87,7 +84,7 @@ impl Deref for FooterSeparator {
         match self {
             FooterSeparator::ColonSpace => ": ",
             FooterSeparator::SpacePound => " #",
-            FooterSeparator::__NonExhaustive => "",
+            FooterSeparator::__NonExhaustive => unreachable!(),
         }
     }
 }
@@ -98,12 +95,14 @@ impl fmt::Display for FooterSeparator {
     }
 }
 
-impl From<&str> for FooterSeparator {
-    fn from(sep: &str) -> Self {
+impl FromStr for FooterSeparator {
+    type Err = Error;
+
+    fn from_str(sep: &str) -> Result<Self, Self::Err> {
         match sep {
-            ": " => FooterSeparator::ColonSpace,
-            " #" => FooterSeparator::SpacePound,
-            _ => unreachable!(),
+            ": " => Ok(FooterSeparator::ColonSpace),
+            " #" => Ok(FooterSeparator::SpacePound),
+            _ => Err(Error::new(ErrorKind::InvalidFormat)),
         }
     }
 }

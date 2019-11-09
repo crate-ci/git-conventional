@@ -32,16 +32,23 @@ impl<'a> Commit<'a> {
         let (ty, scope, breaking, description, body, footers) =
             parse::<VerboseError<&'a str>>(string).map_err(|err| (string, err))?;
 
+        let breaking = breaking.is_some()
+            || footers
+                .iter()
+                .any(|(k, _, _)| k == &"BREAKING CHANGE" || k == &"BREAKING-CHANGE");
+        let footers: Result<Vec<_>, Error> = footers
+            .into_iter()
+            .map(|(k, s, v)| Ok(Footer::new(k.into(), s.parse()?, v.into())))
+            .collect();
+        let footers = footers?;
+
         Ok(Self {
             ty: ty.into(),
             scope: scope.map(Into::into),
             description: description.into(),
             body: body.map(Into::into),
-            breaking: breaking.is_some()
-                || footers
-                    .iter()
-                    .any(|(k, _, _)| k == &"BREAKING-CHANGE" || k == &"BREAKING CHANGE"),
-            footers: footers.into_iter().map(Into::into).collect(),
+            breaking,
+            footers,
         })
     }
 }

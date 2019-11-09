@@ -5,10 +5,17 @@ use std::fmt;
 /// The error returned when parsing a commit fails.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {
-    commit: String,
-
     /// The kind of error.
     pub kind: Kind,
+
+    commit: Option<String>,
+}
+
+impl Error {
+    /// Create a new error from a `Kind`.
+    pub(crate) fn new(kind: Kind) -> Self {
+        Self { kind, commit: None }
+    }
 }
 
 /// All possible error kinds returned when parsing a conventional commit.
@@ -77,7 +84,7 @@ impl<'a> From<(&'a str, nom::Err<nom::error::VerboseError<&'a str>>)> for Error 
         };
 
         Self {
-            commit: commit.to_owned(),
+            commit: Some(commit.to_owned()),
             kind,
         }
     }
