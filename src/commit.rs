@@ -30,7 +30,7 @@ impl<'a> Commit<'a> {
     /// Conventional Commit specification.
     pub fn new(string: &'a str) -> Result<Self, Error> {
         let (ty, scope, breaking, description, body, footers) =
-            parse::<VerboseError<&'a str>>(string).map_err(|err| (string, err))?;
+            parse::<VerboseError<&'a str>>(string).map_err(|err| Error::with_nom(string, err))?;
 
         let breaking = breaking.is_some()
             || footers

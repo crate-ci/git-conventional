@@ -5,63 +5,20 @@ use std::fmt;
 /// The error returned when parsing a commit fails.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {
-    /// The kind of error.
-    pub kind: Kind,
+    kind: ErrorKind,
 
     commit: Option<String>,
 }
 
 impl Error {
-    /// Create a new error from a `Kind`.
-    pub(crate) fn new(kind: Kind) -> Self {
+    /// Create a new error from a `ErrorKind`.
+    pub(crate) fn new(kind: ErrorKind) -> Self {
         Self { kind, commit: None }
     }
-}
 
-/// All possible error kinds returned when parsing a conventional commit.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Kind {
-    /// The commit type is missing from the commit message.
-    MissingType,
-
-    /// The scope has an invalid format.
-    InvalidScope,
-
-    /// The description of the commit is missing.
-    MissingDescription,
-
-    /// The body of the commit has an invalid format.
-    InvalidBody,
-
-    /// Any other part of the commit does not conform to the conventional commit
-    /// spec.
-    InvalidFormat,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Kind::*;
-
-        match self.kind {
-            MissingType => f.write_str("missing type definition"),
-            InvalidScope => f.write_str("invalid scope format"),
-            MissingDescription => f.write_str("missing commit description"),
-            InvalidBody => f.write_str("invalid body format"),
-            InvalidFormat => f.write_str("invalid commit format"),
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
-}
-
-impl<'a> From<(&'a str, nom::Err<nom::error::VerboseError<&'a str>>)> for Error {
-    fn from((commit, err): (&'a str, nom::Err<nom::error::VerboseError<&'a str>>)) -> Self {
+    pub(crate) fn with_nom(commit: &str, err: nom::Err<nom::error::VerboseError<&str>>) -> Self {
         use nom::error::VerboseErrorKind::*;
-        use Kind::*;
+        use ErrorKind::*;
 
         let kind = match err {
             nom::Err::Incomplete(_) => unreachable!(),
@@ -88,4 +45,53 @@ impl<'a> From<(&'a str, nom::Err<nom::error::VerboseError<&'a str>>)> for Error 
             kind,
         }
     }
+
+    /// The kind of error.
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use ErrorKind::*;
+
+        match self.kind {
+            MissingType => f.write_str("missing type definition"),
+            InvalidScope => f.write_str("invalid scope format"),
+            MissingDescription => f.write_str("missing commit description"),
+            InvalidBody => f.write_str("invalid body format"),
+            InvalidFormat => f.write_str("invalid commit format"),
+            __NonExhaustive => unreachable!("__NonExhaustive is unused"),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
+/// All possible error kinds returned when parsing a conventional commit.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ErrorKind {
+    /// The commit type is missing from the commit message.
+    MissingType,
+
+    /// The scope has an invalid format.
+    InvalidScope,
+
+    /// The description of the commit is missing.
+    MissingDescription,
+
+    /// The body of the commit has an invalid format.
+    InvalidBody,
+
+    /// Any other part of the commit does not conform to the conventional commit
+    /// spec.
+    InvalidFormat,
+
+    #[doc(hidden)]
+    __NonExhaustive,
 }

@@ -97,7 +97,7 @@ mod parser;
 
 pub use commit::{simple::Simple, typed::Typed, Commit};
 pub use component::SimpleFooter;
-pub use error::{Error, Kind as ErrorKind};
+pub use error::{Error, ErrorKind};
 
 /// Strictly-typed accessors for a `Commit`.
 pub mod typed {
@@ -183,7 +183,7 @@ mod tests {
     fn test_missing_type() {
         let err = Commit::new("").unwrap_err();
 
-        assert_eq!(ErrorKind::MissingType, err.kind);
+        assert_eq!(ErrorKind::MissingType, err.kind());
     }
 
     mod typed {
