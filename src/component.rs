@@ -77,15 +77,22 @@ pub enum FooterSeparator {
     __NonExhaustive,
 }
 
-impl Deref for FooterSeparator {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
+impl FooterSeparator {
+    /// Access `str` representation of FooterSeparator
+    pub fn as_str(self) -> &'static str {
         match self {
             FooterSeparator::ColonSpace => ": ",
             FooterSeparator::SpacePound => " #",
             FooterSeparator::__NonExhaustive => unreachable!(),
         }
+    }
+}
+
+impl Deref for FooterSeparator {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        self.as_str()
     }
 }
 
@@ -119,13 +126,18 @@ macro_rules! components {
             pub fn new(value: &'a str) -> Self {
                 $ty(value)
             }
+
+            /// Access `str` representation of $ty
+            pub fn as_str(&self) -> &'a str {
+                &self.0
+            }
         }
 
         impl Deref for $ty<'_> {
             type Target = str;
 
             fn deref(&self) -> &Self::Target {
-                &self.0
+                self.as_str()
             }
         }
 
@@ -156,13 +168,18 @@ macro_rules! unicase_components {
                 pub fn new(value: &'a str) -> Self {
                     $ty(unicase::UniCase::new(value))
                 }
+
+                /// Access `str` representation of $ty
+                pub fn as_str(&self) -> &'a str {
+                    &self.0.into_inner()
+                }
             }
 
             impl Deref for $ty<'_> {
                 type Target = str;
 
                 fn deref(&self) -> &Self::Target {
-                    &self.0.into_inner()
+                    self.as_str()
                 }
             }
 
