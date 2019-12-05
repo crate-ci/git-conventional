@@ -44,7 +44,7 @@ impl<'a> Footer<'a> {
 /// values of its components.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct SimpleFooter<'a> {
-    pub(crate) footer: &'a Footer<'a>,
+    pub(crate) footer: Footer<'a>,
 }
 
 impl<'a> SimpleFooter<'a> {

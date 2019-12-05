@@ -1,22 +1,21 @@
 //! Conventional Commit implementations.
 
 use crate::{Commit, SimpleFooter};
-use std::ops::Deref;
 
 /// The weakly-typed variant of a commit.
-pub trait Simple {
+pub trait Simple<'a> {
     /// The type of the commit.
-    fn type_(&self) -> &str;
+    fn type_(&self) -> &'a str;
 
     /// The optional scope of the commit.
-    fn scope(&self) -> Option<&str>;
+    fn scope(&self) -> Option<&'a str>;
 
     /// The commit description.
-    fn description(&self) -> &str;
+    fn description(&self) -> &'a str;
 
     /// The commit body, containing a more detailed explanation of the commit
     /// changes.
-    fn body(&self) -> Option<&str>;
+    fn body(&self) -> Option<&'a str>;
 
     /// A flag to signal that the commit contains breaking changes.
     ///
@@ -39,34 +38,34 @@ pub trait Simple {
     /// requiring whitespace before newlines.
     ///
     /// See: <https://git-scm.com/docs/git-interpret-trailers>
-    fn footers(&self) -> Vec<SimpleFooter<'_>>;
+    fn footers(&self) -> Vec<SimpleFooter<'a>>;
 }
 
-impl Simple for Commit<'_> {
-    fn type_(&self) -> &str {
-        &self.ty
+impl<'a> Simple<'a> for Commit<'a> {
+    fn type_(&self) -> &'a str {
+        self.ty.as_str()
     }
 
-    fn scope(&self) -> Option<&str> {
-        self.scope.as_ref().map(Deref::deref)
+    fn scope(&self) -> Option<&'a str> {
+        self.scope.as_ref().map(|s| s.as_str())
     }
 
-    fn description(&self) -> &str {
-        &self.description
+    fn description(&self) -> &'a str {
+        self.description.as_str()
     }
 
-    fn body(&self) -> Option<&str> {
-        self.body.as_ref().map(Deref::deref)
+    fn body(&self) -> Option<&'a str> {
+        self.body.as_ref().map(|s| s.as_str())
     }
 
     fn breaking(&self) -> bool {
         self.breaking
     }
 
-    fn footers(&self) -> Vec<SimpleFooter<'_>> {
+    fn footers(&self) -> Vec<SimpleFooter<'a>> {
         self.footers
             .iter()
-            .map(|footer| SimpleFooter { footer })
+            .map(|footer| SimpleFooter { footer: *footer })
             .collect::<Vec<_>>()
     }
 }
