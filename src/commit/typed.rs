@@ -1,6 +1,4 @@
 //! Conventional Commit implementations.
-//! Conventional Commit implementations.
-//! Conventional Commit implementations.
 
 use crate::typed::{Body, Description, Footer, Scope, Type};
 use crate::Commit;
