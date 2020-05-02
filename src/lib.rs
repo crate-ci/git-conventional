@@ -52,43 +52,7 @@
 //! }
 //! ```
 
-#![deny(
-    clippy::all,
-    clippy::cargo,
-    clippy::clone_on_ref_ptr,
-    clippy::dbg_macro,
-    clippy::indexing_slicing,
-    clippy::mem_forget,
-    clippy::multiple_inherent_impl,
-    clippy::nursery,
-    clippy::option_unwrap_used,
-    clippy::pedantic,
-    clippy::print_stdout,
-    clippy::result_unwrap_used,
-    clippy::unimplemented,
-    clippy::use_debug,
-    clippy::wildcard_enum_match_arm,
-    clippy::wrong_pub_self_convention,
-    deprecated_in_future,
-    future_incompatible,
-    missing_copy_implementations,
-    missing_debug_implementations,
-    missing_docs,
-    nonstandard_style,
-    rust_2018_idioms,
-    rustdoc,
-    trivial_casts,
-    trivial_numeric_casts,
-    unreachable_pub,
-    unsafe_code,
-    unused_import_braces,
-    unused_lifetimes,
-    unused_qualifications,
-    unused_results,
-    variant_size_differences,
-    warnings
-)]
-#![doc(html_root_url = "https://docs.rs/git_conventional")]
+#![warn(missing_docs)]
 
 mod commit;
 mod component;
