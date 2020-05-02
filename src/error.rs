@@ -3,17 +3,21 @@
 use std::fmt;
 
 /// The error returned when parsing a commit fails.
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Error {
     kind: ErrorKind,
 
+    context: Option<Box<dyn fmt::Display>>,
     commit: Option<String>,
 }
 
 impl Error {
     /// Create a new error from a `ErrorKind`.
     pub(crate) fn new(kind: ErrorKind) -> Self {
-        Self { kind, commit: None }
+        Self {
+            kind,
+            context: None,
+            commit: None,
+        }
     }
 
     pub(crate) fn with_nom(commit: &str, err: nom::Err<nom::error::VerboseError<&str>>) -> Self {
@@ -24,26 +28,29 @@ impl Error {
             nom::Err::Incomplete(_) => unreachable!(),
             nom::Err::Error(err) | nom::Err::Failure(err) => match err.errors.last() {
                 None => unreachable!("you found a bug!"),
-                Some((_, kind)) => {
-                    {};
-                    match kind {
-                        Context(string) => match *string {
-                            "type" => MissingType,
-                            "scope_block" | "scope" => InvalidScope,
-                            "description" => MissingDescription,
-                            "body" => InvalidBody,
-                            "space" | "colon" | _ => InvalidFormat,
-                        },
-                        Char(_) | Nom(_) => InvalidFormat,
-                    }
-                }
+                Some((_, kind)) => match kind {
+                    Context(string) => match *string {
+                        crate::parser::TYPE => MissingType,
+                        crate::parser::SCOPE => InvalidScope,
+                        crate::parser::DESCRIPTION => MissingDescription,
+                        crate::parser::BODY => InvalidBody,
+                        crate::parser::FORMAT | _ => InvalidFormat,
+                    },
+                    Char(_) | Nom(_) => InvalidFormat,
+                },
             },
         };
 
         Self {
-            commit: Some(commit.to_owned()),
             kind,
+            context: None,
+            commit: Some(commit.to_owned()),
         }
+    }
+
+    pub(crate) fn set_context(mut self, context: Box<dyn fmt::Display>) -> Self {
+        self.context = Some(context);
+        self
     }
 
     /// The kind of error.
@@ -52,17 +59,22 @@ impl Error {
     }
 }
 
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Error")
+            .field("kind", &self.kind)
+            .field("context", &self.context.as_ref().map(|s| s.to_string()))
+            .field("commit", &self.commit)
+            .finish()
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use ErrorKind::*;
-
-        match self.kind {
-            MissingType => f.write_str("missing type definition"),
-            InvalidScope => f.write_str("invalid scope format"),
-            MissingDescription => f.write_str("missing commit description"),
-            InvalidBody => f.write_str("invalid body format"),
-            InvalidFormat => f.write_str("invalid commit format"),
-            __NonExhaustive => unreachable!("__NonExhaustive is unused"),
+        if let Some(context) = self.context.as_ref() {
+            write!(f, "{}: {}", self.kind, context)
+        } else {
+            write!(f, "{}", self.kind)
         }
     }
 }
@@ -74,7 +86,7 @@ impl std::error::Error for Error {
 }
 
 /// All possible error kinds returned when parsing a conventional commit.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ErrorKind {
     /// The commit type is missing from the commit message.
     MissingType,
@@ -88,10 +100,28 @@ pub enum ErrorKind {
     /// The body of the commit has an invalid format.
     InvalidBody,
 
+    /// The footer of the commit has an invalid format.
+    InvalidFooter,
+
     /// Any other part of the commit does not conform to the conventional commit
     /// spec.
     InvalidFormat,
 
     #[doc(hidden)]
     __NonExhaustive,
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            ErrorKind::MissingType => "Missing type definition",
+            ErrorKind::InvalidScope => "Invalid scope format",
+            ErrorKind::MissingDescription => "Missing commit description",
+            ErrorKind::InvalidBody => "invalid body format",
+            ErrorKind::InvalidFooter => "invalid body footer",
+            ErrorKind::InvalidFormat => "invalid commit format",
+            ErrorKind::__NonExhaustive => unreachable!("__NonExhaustive is unused"),
+        };
+        f.write_str(s)
+    }
 }

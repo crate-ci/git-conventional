@@ -1,3 +1,5 @@
+use std::str;
+
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
@@ -7,7 +9,6 @@ use nom::error::{context, ErrorKind, ParseError};
 use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
-use std::str;
 
 type CommitDetails<'a> = (
     &'a str,
@@ -61,25 +62,33 @@ fn eof<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     }
 }
 
+pub(crate) const BREAKER: &'static str = "exclamation_mark";
+
 fn exclamation_mark<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    context("exclamation_mark", tag("!"))(i)
+    context(BREAKER, tag("!"))(i)
 }
 
+pub(crate) const FORMAT: &'static str = "format";
+
 fn colon<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    context("colon", tag(":"))(i)
+    context(FORMAT, tag(":"))(i)
 }
 
 fn space<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    context("space", tag(" "))(i)
+    context(FORMAT, tag(" "))(i)
 }
 
+pub(crate) const TYPE: &'static str = "type";
+
 fn type_<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    context("type", take_while1(|c: char| is_alphabetic(c as u8)))(i)
+    context(TYPE, take_while1(|c: char| is_alphabetic(c as u8)))(i)
 }
+
+pub(crate) const SCOPE: &'static str = "scope";
 
 fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     context(
-        "scope",
+        SCOPE,
         map_parser(
             take_till1(|c: char| c == ')'),
             all_consuming(verify(take_while(is_compound_noun_char), is_compound_noun)),
@@ -87,9 +96,11 @@ fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E>
     )(i)
 }
 
+pub(crate) const DESCRIPTION: &'static str = "description";
+
 fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     context(
-        "description",
+        DESCRIPTION,
         verify(take_till1(is_line_ending), |s: &str| {
             let first = s.chars().next();
             let last = s.chars().last();
@@ -114,10 +125,12 @@ fn subject<'a, E: ParseError<&'a str>>(
     ))(i)
 }
 
+pub(crate) const BODY: &'static str = "body";
+
 fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
-        let err = E::add_context(i, "body", err);
+        let err = E::add_context(i, BODY, err);
         return Err(nom::Err::Failure(err));
     }
 

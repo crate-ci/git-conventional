@@ -209,7 +209,10 @@ impl FromStr for FooterSeparator {
         match sep {
             ": " => Ok(FooterSeparator::ColonSpace),
             " #" => Ok(FooterSeparator::SpacePound),
-            _ => Err(Error::new(ErrorKind::InvalidFormat)),
+            _ => {
+                Err(Error::new(ErrorKind::InvalidFooter)
+                    .set_context(Box::new(format!("{:?}", sep))))
+            }
         }
     }
 }
