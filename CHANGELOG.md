@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Features
 
 - Add typed identifier equality with `str`.
+- Added constants for common `type_`s.
 
 ## Fixes
 

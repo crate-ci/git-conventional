@@ -24,7 +24,7 @@
 //! let commit = git_conventional::Commit::parse(message).unwrap();
 //!
 //! // You can access all components of the subject.
-//! assert_eq!(commit.type_(), "docs");
+//! assert_eq!(commit.type_(), git_conventional::DOCS);
 //! assert_eq!(commit.scope().unwrap(), "example");
 //! assert_eq!(commit.description(), "add tested usage example");
 //!
@@ -55,5 +55,24 @@ mod parser;
 
 pub use commit::{Commit, Footer, FooterSeparator, FooterToken, FooterValue, Scope, Type};
 pub use error::{Error, ErrorKind};
+
+/// Commit type when introducing new features (correlates with `minor` in semver)
+pub const FEAT: Type = Type::new("feat");
+/// Commit type when patching a bug (correlates with `patch` in semver)
+pub const FIX: Type = Type::new("fix");
+/// Possile commit type when reverting changes.
+pub const REVERT: Type = Type::new("revert");
+/// Possile commit type for changing documentation.
+pub const DOCS: Type = Type::new("docs");
+/// Possile commit type for changing code style.
+pub const STYLE: Type = Type::new("style");
+/// Possile commit type for refactoring code structure.
+pub const REFACTOR: Type = Type::new("refactor");
+/// Possile commit type for performance optimizations.
+pub const PERF: Type = Type::new("perf");
+/// Possile commit type for addressing tests.
+pub const TEST: Type = Type::new("test");
+/// Possile commit type for other things.
+pub const CHORE: Type = Type::new("chore");
 
 doc_comment::doctest!("../README.md");

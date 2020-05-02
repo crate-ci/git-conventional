@@ -226,12 +226,12 @@ macro_rules! components {
 
             impl<'a> $ty<'a> {
                 /// Create a $ty
-                pub fn new(value: &'a str) -> Self {
+                pub const fn new(value: &'a str) -> Self {
                     $ty(value)
                 }
 
                 /// Access `str` representation of $ty
-                pub fn as_str(&self) -> &'a str {
+                pub const fn as_str(&self) -> &'a str {
                     &self.0
                 }
             }
@@ -274,8 +274,8 @@ macro_rules! unicase_components {
 
             impl<'a> $ty<'a> {
                 /// Create a $ty
-                pub fn new(value: &'a str) -> Self {
-                    $ty(unicase::UniCase::new(value))
+                pub const fn new(value: &'a str) -> Self {
+                    $ty(unicase::UniCase::unicode(value))
                 }
 
                 /// Access `str` representation of $ty
@@ -335,7 +335,7 @@ mod test {
     #[test]
     fn test_breaking_change() {
         let commit = Commit::parse("feat!: this is a breaking change").unwrap();
-        assert_eq!(Type::new("feat"), commit.type_());
+        assert_eq!(crate::FEAT, commit.type_());
         assert!(commit.breaking());
 
         let commit = Commit::parse(indoc!(
@@ -344,7 +344,7 @@ mod test {
             BREAKING CHANGE: breaking change"
         ))
         .unwrap();
-        assert_eq!(Type::new("feat"), commit.type_());
+        assert_eq!(crate::FEAT, commit.type_());
         assert_eq!(
             "breaking change",
             &*commit.footers().get(0).unwrap().value()
@@ -357,7 +357,7 @@ mod test {
             BREAKING-CHANGE: it's broken"
         ))
         .unwrap();
-        assert_eq!(Type::new("fix"), commit.type_());
+        assert_eq!(crate::FIX, commit.type_());
         assert_eq!("it's broken", &*commit.footers().get(0).unwrap().value());
         assert!(commit.breaking());
     }
@@ -375,7 +375,7 @@ mod test {
 
         let commit = Commit::parse(commit).unwrap();
 
-        assert_eq!(Type::new("chore"), commit.type_());
+        assert_eq!(crate::CHORE, commit.type_());
         assert_eq!(None, commit.scope());
         assert_eq!("improve changelog readability", commit.description());
         assert_eq!(
