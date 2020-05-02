@@ -18,28 +18,15 @@
    cargo add git_conventional
    ```
 
-2. Import the `Commit` type and the `Simple` trait to parse a commit string, and
-   query its different components as string slices:
+2. Parse a commit and lookup what you ned
 
    ```rust
-   use git_conventional::{Commit, Simple as _};
+   let commit = git_conventional::Commit::parse("feat(conventional commit): this is it!").unwrap();
 
-   let commit = Commit::new("feat(conventional commit): this is it!").unwrap();
-
-   assert_eq!("feat", commit.type_());
-   assert_eq!(Some("conventional commit"), commit.scope());
-   assert_eq!("this is it!", commit.description());
-   assert_eq!(None, commit.body());
-   ```
-
-3. Upgrade to `Typed` components for strongly typed access:
-
-   ```rust
-   use git_conventional::{Commit, typed::Type, Typed as _};
-
-   let commit = Commit::new("feat(conventional commit): this is it!").unwrap();
-
-   assert_eq!(Type::new("feat"), commit.type_());
+   assert_eq!(commit.type_(), "feat");
+   assert_eq!(commit.scope().unwrap(), "conventional commit");
+   assert_eq!(commit.description(), "this is it!");
+   assert_eq!(commit.body(), None);
    ```
 
 ## License

@@ -6,162 +6,54 @@
 //!
 //! ```rust
 //! use indoc::indoc;
-//! use git_conventional::{Commit, Error, Simple as _};
-//! use std::str::FromStr;
 //!
-//! fn main() -> Result<(), Error> {
-//!     let message = indoc!("
-//!         docs(example)!: add tested usage example
+//! let message = indoc!("
+//!     docs(example)!: add tested usage example
 //!
-//!         This example is tested using Rust's doctest capabilities. Having this
-//!         example helps people understand how to use the parser.
+//!     This example is tested using Rust's doctest capabilities. Having this
+//!     example helps people understand how to use the parser.
 //!
-//!         BREAKING CHANGE: Going from nothing to something, meaning anyone doing
-//!         nothing before suddenly has something to do. That sounds like a change
-//!         in your break.
+//!     BREAKING CHANGE: Going from nothing to something, meaning anyone doing
+//!     nothing before suddenly has something to do. That sounds like a change
+//!     in your break.
 //!
-//!         Co-Authored-By: Lisa Simpson <lisa@simpsons.fam>
-//!         Closes #12
-//!     ");
+//!     Co-Authored-By: Lisa Simpson <lisa@simpsons.fam>
+//!     Closes #12
+//! ");
 //!
-//!     let commit = Commit::new(message)?;
+//! let commit = git_conventional::Commit::parse(message).unwrap();
 //!
-//!     // You can access all components of the header.
-//!     assert_eq!(commit.type_(), "docs");
-//!     assert_eq!(commit.scope(), Some("example"));
-//!     assert_eq!(commit.description(), "add tested usage example");
+//! // You can access all components of the subject.
+//! assert_eq!(commit.type_(), "docs");
+//! assert_eq!(commit.scope().unwrap(), "example");
+//! assert_eq!(commit.description(), "add tested usage example");
 //!
-//!     // And the free-form commit body.
-//!     assert!(commit.body().unwrap().contains("helps people understand"));
+//! // And the free-form commit body.
+//! assert!(commit.body().unwrap().contains("helps people understand"));
 //!
-//!     // If a commit is marked with a bang (`!`) OR has a footer with the key
-//!     // "BREAKING CHANGE", it is considered a "breaking" commit.
-//!     assert!(commit.breaking());
+//! // If a commit is marked with a bang (`!`) OR has a footer with the key
+//! // "BREAKING CHANGE", it is considered a "breaking" commit.
+//! assert!(commit.breaking());
 //!
-//!     // You can access each footer individually.
-//!     assert!(commit.footers().get(0).unwrap().value().contains("That sounds like a change"));
+//! // You can access each footer individually.
+//! assert!(commit.footers()[0].value().contains("That sounds like a change"));
 //!
-//!     // Footers provide access to their token and value.
-//!     assert_eq!(commit.footers().get(1).unwrap().token(), "Co-Authored-By");
-//!     assert_eq!(commit.footers().get(1).unwrap().value(), "Lisa Simpson <lisa@simpsons.fam>");
+//! // Footers provide access to their token and value.
+//! assert_eq!(commit.footers()[1].token(), "Co-Authored-By");
+//! assert_eq!(commit.footers()[1].value(), "Lisa Simpson <lisa@simpsons.fam>");
 //!
-//!     // Two types of separators are supported, regular ": ", and " #":
-//!     assert_eq!(commit.footers().get(2).unwrap().separator(), " #");
-//!     assert_eq!(commit.footers().get(2).unwrap().value(), "12");
-//!     # Ok(())
-//! }
+//! // Two types of separators are supported, regular ": ", and " #":
+//! assert_eq!(commit.footers()[2].separator(), " #");
+//! assert_eq!(commit.footers()[2].value(), "12");
 //! ```
 
 #![warn(missing_docs)]
 
 mod commit;
-mod component;
 mod error;
 mod parser;
 
-pub use commit::{simple::Simple, typed::Typed, Commit};
-pub use component::SimpleFooter;
+pub use commit::{Commit, Footer, FooterSeparator, FooterToken, FooterValue, Scope, Type};
 pub use error::{Error, ErrorKind};
 
-/// Strictly-typed accessors for a `Commit`.
-pub mod typed {
-    pub use super::component::{
-        Body, Description, Footer, FooterSeparator, FooterToken, FooterValue, Scope, Type,
-    };
-}
-
 doc_comment::doctest!("../README.md");
-
-#[cfg(test)]
-#[allow(clippy::result_unwrap_used)]
-mod tests {
-    use super::{Commit, ErrorKind, Simple as _};
-    use indoc::indoc;
-
-    #[test]
-    fn test_valid_simple_commit() {
-        let commit = Commit::new("type(my scope): hello world").unwrap();
-
-        assert_eq!("type", commit.type_());
-        assert_eq!(Some("my scope"), commit.scope());
-        assert_eq!("hello world", commit.description());
-    }
-
-    #[test]
-    fn test_breaking_change() {
-        let commit = Commit::new("feat!: this is a breaking change").unwrap();
-        assert_eq!("feat", commit.type_());
-        assert!(commit.breaking());
-
-        let commit = Commit::new(indoc!(
-            "feat: message
-
-            BREAKING CHANGE: breaking change"
-        ))
-        .unwrap();
-
-        assert_eq!("feat", commit.type_());
-        assert_eq!(
-            "breaking change",
-            &*commit.footers().get(0).unwrap().value()
-        );
-        assert!(commit.breaking());
-
-        let commit = Commit::new(indoc!(
-            "fix: message
-
-            BREAKING-CHANGE: it's broken"
-        ))
-        .unwrap();
-
-        assert_eq!("fix", commit.type_());
-        assert_eq!("it's broken", &*commit.footers().get(0).unwrap().value());
-        assert!(commit.breaking());
-    }
-
-    #[test]
-    fn test_valid_complex_commit() {
-        let commit = indoc! {"
-            chore: improve changelog readability
-
-            Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a tiny bit
-            easier to parse while reading.
-
-            BREAKING CHANGE: Just kidding!
-        "};
-
-        let commit = Commit::new(commit).unwrap();
-
-        assert_eq!("chore", commit.type_());
-        assert_eq!(None, commit.scope());
-        assert_eq!("improve changelog readability", commit.description());
-        assert_eq!(
-            Some(indoc!(
-                "Change date notation from YYYY-MM-DD to YYYY.MM.DD to make it a tiny bit
-                 easier to parse while reading."
-            )),
-            commit.body()
-        );
-        assert_eq!("Just kidding!", &*commit.footers().get(0).unwrap().value());
-    }
-
-    #[test]
-    fn test_missing_type() {
-        let err = Commit::new("").unwrap_err();
-
-        assert_eq!(ErrorKind::MissingType, err.kind());
-    }
-
-    mod typed {
-        use crate::{component::*, Commit, Typed as _};
-
-        #[test]
-        fn test_typed_commit() {
-            let commit = Commit::new("type(my scope): hello world").unwrap();
-
-            assert_eq!(Type::new("type"), commit.type_());
-            assert_eq!(Some(Scope::new("my scope")), commit.scope());
-            assert_eq!(Description::new("hello world"), commit.description());
-        }
-    }
-}

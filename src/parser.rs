@@ -21,10 +21,10 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
-    let (i, header) = terminated(header, alt((line_ending, eof)))(i)?;
+    let (i, subject) = terminated(subject, alt((line_ending, eof)))(i)?;
     let (i, body) = opt(preceded(line_ending, body))(i)?;
     let (_, footers) = many0(footer)(i)?;
-    let (type_, scope, breaking, description) = header;
+    let (type_, scope, breaking, description) = subject;
 
     Ok((type_, scope, breaking, description, body, footers))
 }
@@ -103,7 +103,7 @@ fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a s
 }
 
 #[allow(clippy::type_complexity)]
-fn header<'a, E: ParseError<&'a str>>(
+fn subject<'a, E: ParseError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
     tuple((
@@ -191,7 +191,7 @@ mod tests {
         })
     }
 
-    mod header {
+    mod subject {
         use super::*;
 
         #[test]
@@ -268,8 +268,8 @@ mod tests {
         }
 
         #[test]
-        fn test_header() {
-            let p = header::<VerboseError<&str>>;
+        fn test_subject() {
+            let p = subject::<VerboseError<&str>>;
 
             // valid
             assert_eq!(
