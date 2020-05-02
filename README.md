@@ -1,38 +1,33 @@
-<div align="center">
+# `code>conventional::Commit`
 
-<h1><code>conventional::Commit</code></h1>
+[![Build Status](https://dev.azure.com/crate-ci/crate-ci/_apis/build/status/git-conventional?branchName=master)](https://dev.azure.com/crate-ci/crate-ci/_build/latest?definitionId=5&branchName=master)
+[![codecov](https://codecov.io/gh/crate-ci/git-conventional/branch/master/graph/badge.svg)](https://codecov.io/gh/crate-ci/git-conventional)
+[![Documentation](https://img.shields.io/badge/docs-master-blue.svg)][Documentation]
+![License](https://img.shields.io/crates/l/git-conventional.svg)
+[![Crates Status](https://img.shields.io/crates/v/git-conventional.svg)](https://crates.io/crates/git-conventional)
 
-[![Latest Crate Version](https://img.shields.io/crates/v/conventional.svg?logo=rust&label=version&logoColor=white&colorB=brightgreen)](https://crates.io/crates/conventional "The latest released version on crates.io.")
-[![Library Documentation](https://docs.rs/conventional/badge.svg)](https://docs.rs/conventional "The online documentation at docs.rs.")
-[![Discord Chat](https://img.shields.io/discord/477552212156088320.svg?logo=discord&label=discord%20chat&logoColor=white)](https://discord.gg/Kc4qZWE "Ask a question or just enjoy your stay!")
+> A Rust parser library for the [Conventional Commit](https://www.conventionalcommits.org) spec.
 
-<br />
-<strong>A Rust parser library for the <a href="https://www.conventionalcommits.org">Conventional Commit</a> spec.</strong>
-<br />
-<br />
-
-</div>
-
-### Quick Start
+## Quick Start
 
 1. Add the crate to your `Cargo.toml`:
 
    ```shell
    cargo install cargo-edit
 
-   cargo add conventional
+   cargo add git_conventional
    ```
 
 2. Import the `Commit` type and the `Simple` trait to parse a commit string, and
    query its different components as string slices:
 
    ```rust
-   use conventional::{Commit, Simple as _};
+   use git_conventional::{Commit, Simple as _};
 
    let commit = Commit::new("feat(conventional commit): this is it!").unwrap();
 
    assert_eq!("feat", commit.type_());
-   assert_eq!("conventional commit", commit.scope());
+   assert_eq!(Some("conventional commit"), commit.scope());
    assert_eq!("this is it!", commit.description());
    assert_eq!(None, commit.body());
    ```
@@ -40,14 +35,28 @@
 3. Upgrade to `Typed` components for strongly typed access:
 
    ```rust
-   use conventional::{Commit, Typed as _};
+   use git_conventional::{Commit, typed::Type, Typed as _};
 
    let commit = Commit::new("feat(conventional commit): this is it!").unwrap();
 
-   assert_eq!(Type("feat"), commit.type_());
+   assert_eq!(Type::new("feat"), commit.type_());
    ```
 
-4. Check out tools like [**Jilu**] for an example of library usage.
+## License
 
-[latest specification]: https://www.conventionalcommits.org/en/v1.0.0-beta.4/#specification
-[**Jilu**]: https://github.com/rustic-games/jilu
+Licensed under either of
+
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in the work by you, as defined in the Apache-2.0
+license, shall be dual licensed as above, without any additional terms or
+conditions.
+
+[Crates.io]: https://crates.io/crates/git-conventional
+[Documentation]: https://docs.rs/git-conventional

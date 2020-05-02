@@ -6,7 +6,7 @@
 //!
 //! ```rust
 //! use indoc::indoc;
-//! use conventional::{Commit, Error, Simple as _};
+//! use git_conventional::{Commit, Error, Simple as _};
 //! use std::str::FromStr;
 //!
 //! fn main() -> Result<(), Error> {
@@ -88,7 +88,7 @@
     variant_size_differences,
     warnings
 )]
-#![doc(html_root_url = "https://docs.rs/conventional")]
+#![doc(html_root_url = "https://docs.rs/git_conventional")]
 
 mod commit;
 mod component;
@@ -105,6 +105,8 @@ pub mod typed {
         Body, Description, Footer, FooterSeparator, FooterToken, FooterValue, Scope, Type,
     };
 }
+
+doc_comment::doctest!("../README.md");
 
 #[cfg(test)]
 #[allow(clippy::result_unwrap_used)]
