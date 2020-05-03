@@ -9,6 +9,9 @@ use nom::error::VerboseError;
 use crate::parser::parse;
 use crate::{Error, ErrorKind};
 
+const BREAKING_PHRASE: &str = "BREAKING CHANGE";
+const BREAKING_ARROW: &str = "BREAKING-CHANGE";
+
 /// A conventional commit.
 #[derive(Clone, Debug)]
 pub struct Commit<'a> {
@@ -35,7 +38,7 @@ impl<'a> Commit<'a> {
         let breaking = breaking.is_some()
             || footers
                 .iter()
-                .any(|(k, _, _)| k == &"BREAKING CHANGE" || k == &"BREAKING-CHANGE");
+                .any(|(k, _, _)| k == &BREAKING_PHRASE || k == &BREAKING_ARROW);
         let footers: Result<Vec<_>, Error> = footers
             .into_iter()
             .map(|(k, s, v)| Ok(Footer::new(k.into(), s.parse()?, v.into())))
@@ -155,6 +158,11 @@ impl<'a> Footer<'a> {
     /// The value of the footer.
     pub const fn value(&self) -> FooterValue<'a> {
         self.value
+    }
+
+    /// A flag to signal that the footer describes a breaking change.
+    pub fn breaking(&self) -> bool {
+        self.token.breaking()
     }
 }
 
@@ -316,6 +324,13 @@ macro_rules! unicase_components {
 components![FooterValue];
 
 unicase_components![Type, Scope, FooterToken];
+
+impl<'a> FooterToken<'a> {
+    /// A flag to signal that the footer describes a breaking change.
+    pub fn breaking(&self) -> bool {
+        self == &BREAKING_PHRASE || self == &BREAKING_ARROW
+    }
+}
 
 #[cfg(test)]
 mod test {

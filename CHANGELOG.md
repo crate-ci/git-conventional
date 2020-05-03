@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Add typed identifier equality with `str`.
 - Added constants for common `type_`s.
+- Made it easier to find the footer that describes a breaking change.
 
 ## Fixes
 
