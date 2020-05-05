@@ -41,13 +41,19 @@ impl<'a> Commit<'a> {
                 .any(|(k, _, _)| k == &BREAKING_PHRASE || k == &BREAKING_ARROW);
         let footers: Result<Vec<_>, Error> = footers
             .into_iter()
-            .map(|(k, s, v)| Ok(Footer::new(k.into(), s.parse()?, v.into())))
+            .map(|(k, s, v)| {
+                Ok(Footer::new(
+                    FooterToken::new(k),
+                    s.parse()?,
+                    FooterValue::new(v),
+                ))
+            })
             .collect();
         let footers = footers?;
 
         Ok(Self {
-            ty: ty.into(),
-            scope: scope.map(Into::into),
+            ty: Type::new(ty),
+            scope: scope.map(Scope::new),
             description: description,
             body: body,
             breaking,
@@ -263,12 +269,6 @@ macro_rules! components {
                     self.0.fmt(f)
                 }
             }
-
-            impl<'a> From<&'a str> for $ty<'a> {
-                fn from(string: &'a str) -> Self {
-                    Self(string)
-                }
-            }
         )+
     )
 }
@@ -311,12 +311,6 @@ macro_rules! unicase_components {
                     self.0.fmt(f)
                 }
             }
-
-            impl<'a> From<&'a str> for $ty<'a> {
-                fn from(string: &'a str) -> Self {
-                    Self(unicase::UniCase::new(string))
-                }
-            }
         )+
     )
 }
@@ -325,7 +319,44 @@ components![FooterValue];
 
 unicase_components![Type, Scope, FooterToken];
 
+impl<'a> From<&'a str> for FooterValue<'a> {
+    fn from(string: &'a str) -> Self {
+        Self(string)
+    }
+}
+
+impl<'a> Type<'a> {
+    /// Parse a `str` into a `Type`.
+    pub fn parse(sep: &'a str) -> Result<Self, Error> {
+        let (i, t) = crate::parser::type_(sep).map_err(|err| Error::with_nom(sep, err))?;
+        if !i.is_empty() {
+            return Err(Error::new(ErrorKind::InvalidFormat));
+        }
+        Ok(Type::new(t))
+    }
+}
+
+impl<'a> Scope<'a> {
+    /// Parse a `str` into a `Scope`.
+    pub fn parse(sep: &'a str) -> Result<Self, Error> {
+        let (i, t) = crate::parser::scope(sep).map_err(|err| Error::with_nom(sep, err))?;
+        if !i.is_empty() {
+            return Err(Error::new(ErrorKind::InvalidScope));
+        }
+        Ok(Scope::new(t))
+    }
+}
+
 impl<'a> FooterToken<'a> {
+    /// Parse a `str` into a `FooterToken`.
+    pub fn parse(sep: &'a str) -> Result<Self, Error> {
+        let (i, t) = crate::parser::footer_token(sep).map_err(|err| Error::with_nom(sep, err))?;
+        if !i.is_empty() {
+            return Err(Error::new(ErrorKind::InvalidScope));
+        }
+        Ok(FooterToken::new(t))
+    }
+
     /// A flag to signal that the footer describes a breaking change.
     pub fn breaking(&self) -> bool {
         self == &BREAKING_PHRASE || self == &BREAKING_ARROW

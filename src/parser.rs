@@ -80,13 +80,13 @@ fn space<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E>
 
 pub(crate) const TYPE: &'static str = "type";
 
-fn type_<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn type_<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     context(TYPE, take_while1(|c: char| is_alphabetic(c as u8)))(i)
 }
 
 pub(crate) const SCOPE: &'static str = "scope";
 
-fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     context(
         SCOPE,
         map_parser(
@@ -153,7 +153,7 @@ fn footer<'a, E: ParseError<&'a str>>(
     tuple((footer_token, footer_separator, footer_value))(i)
 }
 
-fn footer_token<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn footer_token<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     alt((
         tag("BREAKING CHANGE"),
         take_while1(|c: char| is_alphabetic(c as u8) || c == '-'),
@@ -164,7 +164,7 @@ fn footer_separator<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, 
     alt((tag(": "), tag(" #")))(i)
 }
 
-fn footer_value<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn footer_value<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
         let err = E::add_context(i, "footer_value", err);
