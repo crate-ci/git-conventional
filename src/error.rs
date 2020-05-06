@@ -6,7 +6,7 @@ use std::fmt;
 pub struct Error {
     kind: ErrorKind,
 
-    context: Option<Box<dyn fmt::Display>>,
+    context: Option<Box<dyn fmt::Display + Send + Sync>>,
     commit: Option<String>,
 }
 
@@ -48,7 +48,7 @@ impl Error {
         }
     }
 
-    pub(crate) fn set_context(mut self, context: Box<dyn fmt::Display>) -> Self {
+    pub(crate) fn set_context(mut self, context: Box<dyn fmt::Display + Send + Sync>) -> Self {
         self.context = Some(context);
         self
     }

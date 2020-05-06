@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+### Breaking Changes
+
+- Made error type work as `Send` / `Sync`.
+
 ## [0.8.0] - 2020-05-06
 
 ### Breaking Changes
