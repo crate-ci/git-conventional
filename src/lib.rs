@@ -53,7 +53,7 @@ mod commit;
 mod error;
 mod parser;
 
-pub use commit::{Commit, Footer, FooterSeparator, FooterToken, FooterValue, Scope, Type};
+pub use commit::{Commit, Footer, FooterSeparator, FooterToken, Scope, Type};
 pub use error::{Error, ErrorKind};
 
 /// Commit type when introducing new features (correlates with `minor` in semver)

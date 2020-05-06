@@ -41,13 +41,7 @@ impl<'a> Commit<'a> {
                 .any(|(k, _, _)| k == &BREAKING_PHRASE || k == &BREAKING_ARROW);
         let footers: Result<Vec<_>, Error> = footers
             .into_iter()
-            .map(|(k, s, v)| {
-                Ok(Footer::new(
-                    FooterToken::new(k),
-                    s.parse()?,
-                    FooterValue::new(v),
-                ))
-            })
+            .map(|(k, s, v)| Ok(Footer::new(FooterToken::new(k), s.parse()?, v)))
             .collect();
         let footers = footers?;
 
@@ -142,12 +136,12 @@ impl fmt::Display for Commit<'_> {
 pub struct Footer<'a> {
     token: FooterToken<'a>,
     sep: FooterSeparator,
-    value: FooterValue<'a>,
+    value: &'a str,
 }
 
 impl<'a> Footer<'a> {
     /// Piece together a footer.
-    pub const fn new(token: FooterToken<'a>, sep: FooterSeparator, value: FooterValue<'a>) -> Self {
+    pub const fn new(token: FooterToken<'a>, sep: FooterSeparator, value: &'a str) -> Self {
         Self { token, sep, value }
     }
 
@@ -162,7 +156,7 @@ impl<'a> Footer<'a> {
     }
 
     /// The value of the footer.
-    pub const fn value(&self) -> FooterValue<'a> {
+    pub const fn value(&self) -> &'a str {
         self.value
     }
 
@@ -231,48 +225,6 @@ impl FromStr for FooterSeparator {
     }
 }
 
-macro_rules! components {
-    ($($ty:ident),+) => (
-        $(
-            /// A component of the conventional commit.
-            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-            pub struct $ty<'a>(&'a str);
-
-            impl<'a> $ty<'a> {
-                /// Create a $ty
-                pub const fn new(value: &'a str) -> Self {
-                    $ty(value)
-                }
-
-                /// Access `str` representation of $ty
-                pub const fn as_str(&self) -> &'a str {
-                    &self.0
-                }
-            }
-
-            impl Deref for $ty<'_> {
-                type Target = str;
-
-                fn deref(&self) -> &Self::Target {
-                    self.as_str()
-                }
-            }
-
-            impl PartialEq<&'_ str> for $ty<'_> {
-                fn eq(&self, other: &&str) -> bool {
-                    *self == $ty::new(*other)
-                }
-            }
-
-            impl fmt::Display for $ty<'_> {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    self.0.fmt(f)
-                }
-            }
-        )+
-    )
-}
-
 macro_rules! unicase_components {
     ($($ty:ident),+) => (
         $(
@@ -315,15 +267,7 @@ macro_rules! unicase_components {
     )
 }
 
-components![FooterValue];
-
 unicase_components![Type, Scope, FooterToken];
-
-impl<'a> From<&'a str> for FooterValue<'a> {
-    fn from(string: &'a str) -> Self {
-        Self(string)
-    }
-}
 
 impl<'a> Type<'a> {
     /// Parse a `str` into a `Type`.
