@@ -41,13 +41,13 @@ impl<'a> Commit<'a> {
                 .any(|(k, _, _)| k == &BREAKING_PHRASE || k == &BREAKING_ARROW);
         let footers: Result<Vec<_>, Error> = footers
             .into_iter()
-            .map(|(k, s, v)| Ok(Footer::new(FooterToken::new(k), s.parse()?, v)))
+            .map(|(k, s, v)| Ok(Footer::new(FooterToken::new_unchecked(k), s.parse()?, v)))
             .collect();
         let footers = footers?;
 
         Ok(Self {
-            ty: Type::new(ty),
-            scope: scope.map(Scope::new),
+            ty: Type::new_unchecked(ty),
+            scope: scope.map(Scope::new_unchecked),
             description: description,
             body: body,
             breaking,
@@ -233,12 +233,12 @@ macro_rules! unicase_components {
             pub struct $ty<'a>(unicase::UniCase<&'a str>);
 
             impl<'a> $ty<'a> {
-                /// Create a $ty
-                pub const fn new(value: &'a str) -> Self {
+                /// See `parse` for ensuring the data is valid.
+                pub const fn new_unchecked(value: &'a str) -> Self {
                     $ty(unicase::UniCase::unicode(value))
                 }
 
-                /// Access `str` representation of $ty
+                /// Access `str` representation
                 pub fn as_str(&self) -> &'a str {
                     &self.0.into_inner()
                 }
@@ -254,7 +254,7 @@ macro_rules! unicase_components {
 
             impl PartialEq<&'_ str> for $ty<'_> {
                 fn eq(&self, other: &&str) -> bool {
-                    *self == $ty::new(*other)
+                    *self == $ty::new_unchecked(*other)
                 }
             }
 
@@ -276,7 +276,7 @@ impl<'a> Type<'a> {
         if !i.is_empty() {
             return Err(Error::new(ErrorKind::InvalidFormat));
         }
-        Ok(Type::new(t))
+        Ok(Type::new_unchecked(t))
     }
 }
 
@@ -287,7 +287,7 @@ impl<'a> Scope<'a> {
         if !i.is_empty() {
             return Err(Error::new(ErrorKind::InvalidScope));
         }
-        Ok(Scope::new(t))
+        Ok(Scope::new_unchecked(t))
     }
 }
 
@@ -298,7 +298,7 @@ impl<'a> FooterToken<'a> {
         if !i.is_empty() {
             return Err(Error::new(ErrorKind::InvalidScope));
         }
-        Ok(FooterToken::new(t))
+        Ok(FooterToken::new_unchecked(t))
     }
 
     /// A flag to signal that the footer describes a breaking change.
@@ -317,9 +317,9 @@ mod test {
     fn test_valid_simple_commit() {
         let commit = Commit::parse("type(my scope): hello world").unwrap();
 
-        assert_eq!(Type::new("type"), commit.type_());
-        assert_eq!(Some(Scope::new("my scope")), commit.scope());
-        assert_eq!("hello world", commit.description());
+        assert_eq!(commit.type_(), "type");
+        assert_eq!(commit.scope().unwrap(), "my scope");
+        assert_eq!(commit.description(), "hello world");
     }
 
     #[test]

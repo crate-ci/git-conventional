@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
+
+### Breaking Changes
+
+- `::new` has been renamed to `::new_unchecked` to signify that it bypasses validity checks.
+
 ## [0.7.0] - 2020-05-05
 
 ### Breaking Changes
