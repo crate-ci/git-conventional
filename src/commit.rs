@@ -80,15 +80,16 @@ impl<'a> Commit<'a> {
     ///
     /// This flag is set either when the commit has an exclamation mark after
     /// the message type and scope, e.g.:
-    ///
-    ///   feat(scope)!: this is a breaking change
-    ///   feat!: this is a breaking change
+    /// ```
+    /// feat(scope)!: this is a breaking change
+    /// ```
     ///
     /// Or when the `BREAKING CHANGE: ` footer is defined:
+    /// ```
+    /// feat: my commit description
     ///
-    ///   feat: my commit description
-    ///
-    ///   BREAKING CHANGE: this is a breaking change
+    /// BREAKING CHANGE: this is a breaking change
+    /// ```
     pub fn breaking(&self) -> bool {
         self.breaking
     }
