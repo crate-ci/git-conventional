@@ -18,7 +18,7 @@
    cargo add git_conventional
    ```
 
-2. Parse a commit and lookup what you ned
+2. Parse a commit and lookup what you need
 
    ```rust
    let commit = git_conventional::Commit::parse("feat(conventional commit): this is it!").unwrap();
