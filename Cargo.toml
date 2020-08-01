@@ -22,4 +22,4 @@ unicase = "2.5"
 doc-comment = "0.3"
 
 [dev-dependencies]
-indoc = "0.3"
+indoc = "1.0"
