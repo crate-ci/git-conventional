@@ -4,8 +4,8 @@ use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
 use nom::character::is_alphabetic;
-use nom::combinator::{all_consuming, cut, map, map_parser, opt, peek, verify};
-use nom::error::{context, ErrorKind, ParseError};
+use nom::combinator::{all_consuming, cut, eof, map, map_parser, opt, peek, verify};
+use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
@@ -19,7 +19,7 @@ type CommitDetails<'a> = (
     Vec<(&'a str, &'a str, &'a str)>,
 );
 
-pub(crate) fn parse<'a, E: ParseError<&'a str>>(
+pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
     let (i, subject) = terminated(subject, alt((line_ending, eof)))(i)?;
@@ -54,39 +54,41 @@ fn is_compound_noun_char(c: char) -> bool {
     is_alphabetic(c as u8) || c == ' ' || c == '-'
 }
 
-fn eof<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-    if i.is_empty() {
-        Ok(("", ""))
-    } else {
-        Err(nom::Err::Error(E::from_error_kind("", ErrorKind::Eof)))
-    }
-}
-
 pub(crate) const BREAKER: &'static str = "exclamation_mark";
 
-fn exclamation_mark<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     context(BREAKER, tag("!"))(i)
 }
 
 pub(crate) const FORMAT: &'static str = "format";
 
-fn colon<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn colon<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     context(FORMAT, tag(":"))(i)
 }
 
-fn space<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn space<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     context(FORMAT, tag(" "))(i)
 }
 
 pub(crate) const TYPE: &'static str = "type";
 
-pub(crate) fn type_<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn type_<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     context(TYPE, take_while1(|c: char| is_alphabetic(c as u8)))(i)
 }
 
 pub(crate) const SCOPE: &'static str = "scope";
 
-pub(crate) fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn scope<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     context(
         SCOPE,
         map_parser(
@@ -98,7 +100,9 @@ pub(crate) fn scope<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, 
 
 pub(crate) const DESCRIPTION: &'static str = "description";
 
-fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn description<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     context(
         DESCRIPTION,
         verify(take_till1(is_line_ending), |s: &str| {
@@ -114,7 +118,7 @@ fn description<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a s
 }
 
 #[allow(clippy::type_complexity)]
-fn subject<'a, E: ParseError<&'a str>>(
+fn subject<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
     tuple((
@@ -127,7 +131,9 @@ fn subject<'a, E: ParseError<&'a str>>(
 
 pub(crate) const BODY: &'static str = "body";
 
-fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
         let err = E::add_context(i, BODY, err);
@@ -147,24 +153,30 @@ fn body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> 
     map(take(offset - 1), str::trim_end)(i)
 }
 
-fn footer<'a, E: ParseError<&'a str>>(
+fn footer<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, &'a str, &'a str), E> {
     tuple((footer_token, footer_separator, footer_value))(i)
 }
 
-pub(crate) fn footer_token<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn footer_token<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     alt((
         tag("BREAKING CHANGE"),
         take_while1(|c: char| is_alphabetic(c as u8) || c == '-'),
     ))(i)
 }
 
-fn footer_separator<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+fn footer_separator<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     alt((tag(": "), tag(" #")))(i)
 }
 
-pub(crate) fn footer_value<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn footer_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
         let err = E::add_context(i, "footer_value", err);

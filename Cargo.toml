@@ -17,7 +17,7 @@ azure-devops = { project = "crate-ci", pipeline = "git-conventional" }
 codecov = { repository = "crate-ci/git-conventional" }
 
 [dependencies]
-nom = { version = "5", default-features = false, features = ["std"] }
+nom = "6"
 unicase = "2.5"
 doc-comment = "0.3"
 
