@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Fixes
 
 <!-- next-url -->
-[Unreleased]: https://github.com/assert-rs/predicates-rs/compare/v0.9.0...HEAD
-[0.9.0]: https://github.com/assert-rs/predicates-rs/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/assert-rs/predicates-rs/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/assert-rs/predicates-rs/compare/ccaed9b35854a3536c4a2c89b89e33fbc5b6b4e4...v0.7.0
+[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/crate-ci/git-conventional/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/crate-ci/git-conventional/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/crate-ci/git-conventional/compare/ccaed9b35854a3536c4a2c89b89e33fbc5b6b4e4...v0.7.0
