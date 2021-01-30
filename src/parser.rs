@@ -54,7 +54,7 @@ fn is_compound_noun_char(c: char) -> bool {
     is_alphabetic(c as u8) || c == ' ' || c == '-'
 }
 
-pub(crate) const BREAKER: &'static str = "exclamation_mark";
+pub(crate) const BREAKER: &str = "exclamation_mark";
 
 fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
@@ -62,7 +62,7 @@ fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     context(BREAKER, tag("!"))(i)
 }
 
-pub(crate) const FORMAT: &'static str = "format";
+pub(crate) const FORMAT: &str = "format";
 
 fn colon<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
@@ -76,7 +76,7 @@ fn space<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     context(FORMAT, tag(" "))(i)
 }
 
-pub(crate) const TYPE: &'static str = "type";
+pub(crate) const TYPE: &str = "type";
 
 pub(crate) fn type_<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
@@ -84,7 +84,7 @@ pub(crate) fn type_<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     context(TYPE, take_while1(|c: char| is_alphabetic(c as u8)))(i)
 }
 
-pub(crate) const SCOPE: &'static str = "scope";
+pub(crate) const SCOPE: &str = "scope";
 
 pub(crate) fn scope<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
@@ -98,7 +98,7 @@ pub(crate) fn scope<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     )(i)
 }
 
-pub(crate) const DESCRIPTION: &'static str = "description";
+pub(crate) const DESCRIPTION: &str = "description";
 
 fn description<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
@@ -129,7 +129,7 @@ fn subject<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     ))(i)
 }
 
-pub(crate) const BODY: &'static str = "body";
+pub(crate) const BODY: &str = "body";
 
 fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
@@ -197,7 +197,7 @@ pub(crate) fn footer_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 }
 
 #[cfg(test)]
-#[allow(clippy::result_unwrap_used, clippy::non_ascii_literal)]
+#[allow(clippy::non_ascii_literal)]
 mod tests {
     use super::*;
     use nom::error::{convert_error, VerboseError};
