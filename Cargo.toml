@@ -15,6 +15,7 @@ edition = "2018"
 [badges]
 azure-devops = { project = "crate-ci", pipeline = "git-conventional" }
 codecov = { repository = "crate-ci/git-conventional" }
+maintenance = { status = "passively-maintained" }
 
 [dependencies]
 nom = "6"
