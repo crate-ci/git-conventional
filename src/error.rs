@@ -34,7 +34,7 @@ impl Error {
                         crate::parser::SCOPE => InvalidScope,
                         crate::parser::DESCRIPTION => MissingDescription,
                         crate::parser::BODY => InvalidBody,
-                        crate::parser::FORMAT | _ => InvalidFormat,
+                        _ => InvalidFormat,
                     },
                     Char(_) | Nom(_) => InvalidFormat,
                 },
@@ -87,6 +87,7 @@ impl std::error::Error for Error {
 
 /// All possible error kinds returned when parsing a conventional commit.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ErrorKind {
     /// The commit type is missing from the commit message.
     MissingType,
@@ -106,9 +107,6 @@ pub enum ErrorKind {
     /// Any other part of the commit does not conform to the conventional commit
     /// spec.
     InvalidFormat,
-
-    #[doc(hidden)]
-    __NonExhaustive,
 }
 
 impl fmt::Display for ErrorKind {
@@ -120,7 +118,6 @@ impl fmt::Display for ErrorKind {
             ErrorKind::InvalidBody => "invalid body format",
             ErrorKind::InvalidFooter => "invalid body footer",
             ErrorKind::InvalidFormat => "invalid commit format",
-            ErrorKind::__NonExhaustive => unreachable!("__NonExhaustive is unused"),
         };
         f.write_str(s)
     }

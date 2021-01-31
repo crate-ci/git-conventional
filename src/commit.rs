@@ -48,8 +48,8 @@ impl<'a> Commit<'a> {
         Ok(Self {
             ty: Type::new_unchecked(ty),
             scope: scope.map(Scope::new_unchecked),
-            description: description,
-            body: body,
+            description,
+            body,
             breaking,
             footers,
         })
@@ -169,15 +169,13 @@ impl<'a> Footer<'a> {
 
 /// The type of separator between the footer token and value.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[non_exhaustive]
 pub enum FooterSeparator {
     /// ": "
     ColonSpace,
 
     /// " #"
     SpacePound,
-
-    #[doc(hidden)]
-    __NonExhaustive,
 }
 
 impl FooterSeparator {
@@ -186,7 +184,6 @@ impl FooterSeparator {
         match self {
             FooterSeparator::ColonSpace => ": ",
             FooterSeparator::SpacePound => " #",
-            FooterSeparator::__NonExhaustive => unreachable!(),
         }
     }
 }
