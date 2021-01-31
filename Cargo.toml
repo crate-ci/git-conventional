@@ -1,6 +1,6 @@
 [package]
 name = "git-conventional"
-version = "0.9.0"
+version = "0.9.1"
 authors = ["Ed Page <eopage@gmail.com>", "Jean Mertz <helloworld@rustic.games>"]
 description = "A parser library for the Conventional Commit specification."
 license = "MIT OR Apache-2.0"
