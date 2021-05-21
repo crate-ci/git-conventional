@@ -13,7 +13,8 @@ const BREAKING_PHRASE: &str = "BREAKING CHANGE";
 const BREAKING_ARROW: &str = "BREAKING-CHANGE";
 
 /// A conventional commit.
-#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[derive(Default, Clone, Debug, PartialEq)]
 pub struct Commit<'a> {
     ty: Type<'a>,
     scope: Option<Scope<'a>>,
@@ -133,6 +134,7 @@ impl fmt::Display for Commit<'_> {
 /// whitespace before newlines.
 ///
 /// See: <https://git-scm.com/docs/git-interpret-trailers>
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Footer<'a> {
     token: FooterToken<'a>,
@@ -168,6 +170,7 @@ impl<'a> Footer<'a> {
 }
 
 /// The type of separator between the footer token and value.
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum FooterSeparator {
@@ -227,7 +230,7 @@ macro_rules! unicase_components {
     ($($ty:ident),+) => (
         $(
             /// A component of the conventional commit.
-            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+            #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
             pub struct $ty<'a>(unicase::UniCase<&'a str>);
 
             impl<'a> $ty<'a> {
@@ -259,6 +262,16 @@ macro_rules! unicase_components {
             impl fmt::Display for $ty<'_> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     self.0.fmt(f)
+                }
+            }
+
+            #[cfg(feature = "serde")]
+            impl serde::Serialize for $ty<'_> {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: serde::Serializer,
+                {
+                    serializer.serialize_str(self)
                 }
             }
         )+
@@ -310,6 +323,8 @@ mod test {
     use super::*;
     use crate::ErrorKind;
     use indoc::indoc;
+    #[cfg(feature = "serde")]
+    use serde_test::Token;
 
     #[test]
     fn test_valid_simple_commit() {
@@ -381,5 +396,35 @@ mod test {
         let err = Commit::parse("").unwrap_err();
 
         assert_eq!(ErrorKind::MissingType, err.kind());
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_commit_serialize() {
+        let commit = Commit::parse("type(my scope): hello world").unwrap();
+        serde_test::assert_ser_tokens(
+            &commit,
+            &[
+                Token::Struct {
+                    name: "Commit",
+                    len: 6,
+                },
+                Token::Str("ty"),
+                Token::Str("type"),
+                Token::Str("scope"),
+                Token::Some,
+                Token::Str("my scope"),
+                Token::Str("description"),
+                Token::Str("hello world"),
+                Token::Str("body"),
+                Token::None,
+                Token::Str("breaking"),
+                Token::Bool(false),
+                Token::Str("footers"),
+                Token::Seq { len: Some(0) },
+                Token::SeqEnd,
+                Token::StructEnd,
+            ],
+        );
     }
 }
