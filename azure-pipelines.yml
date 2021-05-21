@@ -84,7 +84,7 @@ stages:
       parameters:
         rust: $(channel)
         targets: ["$(TARGET)"]
-    - script: cargo test --target $(TARGET) --workspace
+    - script: cargo test --all-features --target $(TARGET) --workspace
       displayName: cargo test
     - script: cargo doc --target $(TARGET) --workspace --no-deps
       displayName: cargo doc
