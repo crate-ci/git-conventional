@@ -37,7 +37,7 @@ stages:
     - template: install-rust.yml@templates
       parameters:
         rust: stable
-    - script: cargo check --workspace --all-targets
+    - script: cargo check --workspace --all-targets --no-default-features --all-features
       displayName: Default features
 - stage: test
   displayName: Test
