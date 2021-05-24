@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## Features
+
+- `serde` feature for serializing `Commit`.
+
 ## [0.9.1] - 2021-01-30
 
 ## [0.9.0] - 2020-05-06
