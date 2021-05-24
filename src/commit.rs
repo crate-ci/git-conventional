@@ -14,7 +14,7 @@ const BREAKING_ARROW: &str = "BREAKING-CHANGE";
 
 /// A conventional commit.
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[derive(Default, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Commit<'a> {
     ty: Type<'a>,
     scope: Option<Scope<'a>>,
@@ -230,7 +230,7 @@ macro_rules! unicase_components {
     ($($ty:ident),+) => (
         $(
             /// A component of the conventional commit.
-            #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
             pub struct $ty<'a>(unicase::UniCase<&'a str>);
 
             impl<'a> $ty<'a> {
