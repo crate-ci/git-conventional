@@ -1,8 +1,8 @@
 [package]
 name = "git-conventional"
 version = "0.9.2"
-authors = ["Ed Page <eopage@gmail.com>", "Jean Mertz <helloworld@rustic.games>"]
 description = "A parser library for the Conventional Commit specification."
+authors = ["Ed Page <eopage@gmail.com>", "Jean Mertz <helloworld@rustic.games>"]
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/crate-ci/git-conventional"
 documentation = "http://docs.rs/git-conventional/"
@@ -13,9 +13,17 @@ keywords = ["parser", "git", "conventional-commit", "commit", "conventional"]
 edition = "2018"
 
 [badges]
-azure-devops = { project = "crate-ci", pipeline = "git-conventional" }
 codecov = { repository = "crate-ci/git-conventional" }
 maintenance = { status = "passively-maintained" }
+
+[package.metadata.release]
+pre-release-replacements = [
+  {file="CHANGELOG.md", search="Unreleased", replace="{{version}}", min=1},
+  {file="CHANGELOG.md", search="\\.\\.\\.HEAD", replace="...{{tag_name}}", exactly=1},
+  {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}", min=1},
+  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## [Unreleased] - ReleaseDate\n", exactly=1},
+  {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/crate-ci/git-conventional/compare/{{tag_name}}...HEAD", exactly=1},
+]
 
 [dependencies]
 nom = "6"
