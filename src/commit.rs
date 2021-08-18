@@ -291,6 +291,28 @@ impl<'a> Type<'a> {
     }
 }
 
+/// Common commit types
+impl Type<'static> {
+    /// Commit type when introducing new features (correlates with `minor` in semver)
+    pub const FEAT: Type<'static> = Type::new_unchecked("feat");
+    /// Commit type when patching a bug (correlates with `patch` in semver)
+    pub const FIX: Type<'static> = Type::new_unchecked("fix");
+    /// Possible commit type when reverting changes.
+    pub const REVERT: Type<'static> = Type::new_unchecked("revert");
+    /// Possible commit type for changing documentation.
+    pub const DOCS: Type<'static> = Type::new_unchecked("docs");
+    /// Possible commit type for changing code style.
+    pub const STYLE: Type<'static> = Type::new_unchecked("style");
+    /// Possible commit type for refactoring code structure.
+    pub const REFACTOR: Type<'static> = Type::new_unchecked("refactor");
+    /// Possible commit type for performance optimizations.
+    pub const PERF: Type<'static> = Type::new_unchecked("perf");
+    /// Possible commit type for addressing tests.
+    pub const TEST: Type<'static> = Type::new_unchecked("test");
+    /// Possible commit type for other things.
+    pub const CHORE: Type<'static> = Type::new_unchecked("chore");
+}
+
 impl<'a> Scope<'a> {
     /// Parse a `str` into a `Scope`.
     pub fn parse(sep: &'a str) -> Result<Self, Error> {
@@ -338,7 +360,7 @@ mod test {
     #[test]
     fn test_breaking_change() {
         let commit = Commit::parse("feat!: this is a breaking change").unwrap();
-        assert_eq!(crate::FEAT, commit.type_());
+        assert_eq!(Type::FEAT, commit.type_());
         assert!(commit.breaking());
 
         let commit = Commit::parse(indoc!(
@@ -347,7 +369,7 @@ mod test {
             BREAKING CHANGE: breaking change"
         ))
         .unwrap();
-        assert_eq!(crate::FEAT, commit.type_());
+        assert_eq!(Type::FEAT, commit.type_());
         assert_eq!(
             "breaking change",
             &*commit.footers().get(0).unwrap().value()
@@ -360,7 +382,7 @@ mod test {
             BREAKING-CHANGE: it's broken"
         ))
         .unwrap();
-        assert_eq!(crate::FIX, commit.type_());
+        assert_eq!(Type::FIX, commit.type_());
         assert_eq!("it's broken", &*commit.footers().get(0).unwrap().value());
         assert!(commit.breaking());
     }
@@ -378,7 +400,7 @@ mod test {
 
         let commit = Commit::parse(commit).unwrap();
 
-        assert_eq!(crate::CHORE, commit.type_());
+        assert_eq!(Type::CHORE, commit.type_());
         assert_eq!(None, commit.scope());
         assert_eq!("improve changelog readability", commit.description());
         assert_eq!(
