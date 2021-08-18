@@ -22,7 +22,7 @@
    ```rust
    let commit = git_conventional::Commit::parse("feat(conventional commit): this is it!").unwrap();
 
-   assert_eq!(commit.type_(), git_conventional::FEAT);
+   assert_eq!(commit.type_(), git_conventional::Type::FEAT);
    assert_eq!(commit.scope().unwrap(), "conventional commit");
    assert_eq!(commit.description(), "this is it!");
    assert_eq!(commit.body(), None);
