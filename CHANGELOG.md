@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## Features
+
+- `Commit::breaking_description` to handle the two potential sources for you
+
+### Breaking Changes
+
+- Moved `<TYPE>` consts to `Type::<TYPE>`.
+
 ## [0.9.2] - 2021-05-24
 
 ## Features
