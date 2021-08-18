@@ -21,6 +21,8 @@ pub struct Commit<'a> {
     description: &'a str,
     body: Option<&'a str>,
     breaking: bool,
+    #[cfg_attr(feature = "serde", serde(skip))]
+    breaking_description: Option<&'a str>,
     footers: Vec<Footer<'a>>,
 }
 
@@ -36,10 +38,12 @@ impl<'a> Commit<'a> {
         let (ty, scope, breaking, description, body, footers) =
             parse::<VerboseError<&'a str>>(string).map_err(|err| Error::with_nom(string, err))?;
 
-        let breaking = breaking.is_some()
-            || footers
-                .iter()
-                .any(|(k, _, _)| k == &BREAKING_PHRASE || k == &BREAKING_ARROW);
+        let breaking_description = footers
+            .iter()
+            .filter_map(|(k, _, v)| (k == &BREAKING_PHRASE || k == &BREAKING_ARROW).then(|| *v))
+            .next()
+            .or_else(|| breaking.then(|| description));
+        let breaking = breaking_description.is_some();
         let footers: Result<Vec<_>, Error> = footers
             .into_iter()
             .map(|(k, s, v)| Ok(Footer::new(FooterToken::new_unchecked(k), s.parse()?, v)))
@@ -52,6 +56,7 @@ impl<'a> Commit<'a> {
             description,
             body,
             breaking,
+            breaking_description,
             footers,
         })
     }
@@ -93,6 +98,14 @@ impl<'a> Commit<'a> {
     /// ```
     pub fn breaking(&self) -> bool {
         self.breaking
+    }
+
+    /// Explanation for the breaking change.
+    ///
+    /// Note: if no `BREAKING CHANGE` footer is provided, the `description` is expected to describe
+    /// the breaking change.
+    pub fn breaking_description(&self) -> Option<&str> {
+        self.breaking_description
     }
 
     /// Any footer.
@@ -362,6 +375,10 @@ mod test {
         let commit = Commit::parse("feat!: this is a breaking change").unwrap();
         assert_eq!(Type::FEAT, commit.type_());
         assert!(commit.breaking());
+        assert_eq!(
+            commit.breaking_description(),
+            Some("this is a breaking change")
+        );
 
         let commit = Commit::parse(indoc!(
             "feat: message
@@ -375,6 +392,7 @@ mod test {
             &*commit.footers().get(0).unwrap().value()
         );
         assert!(commit.breaking());
+        assert_eq!(commit.breaking_description(), Some("breaking change"));
 
         let commit = Commit::parse(indoc!(
             "fix: message
@@ -385,6 +403,7 @@ mod test {
         assert_eq!(Type::FIX, commit.type_());
         assert_eq!("it's broken", &*commit.footers().get(0).unwrap().value());
         assert!(commit.breaking());
+        assert_eq!(commit.breaking_description(), Some("it's broken"));
     }
 
     #[test]
