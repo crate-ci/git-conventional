@@ -13,7 +13,7 @@ use nom::IResult;
 type CommitDetails<'a> = (
     &'a str,
     Option<&'a str>,
-    Option<&'a str>,
+    bool,
     &'a str,
     Option<&'a str>,
     Vec<(&'a str, &'a str, &'a str)>,
@@ -27,7 +27,7 @@ pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (_, footers) = many0(footer)(i)?;
     let (type_, scope, breaking, description) = subject;
 
-    Ok((type_, scope, breaking, description, body, footers))
+    Ok((type_, scope, breaking.is_some(), description, body, footers))
 }
 
 #[inline]
