@@ -23,9 +23,12 @@ pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
     let (i, subject) = terminated(subject, alt((line_ending, eof)))(i)?;
-    let (i, body) = opt(preceded(line_ending, body))(i)?;
-    let (_, footers) = many0(footer)(i)?;
     let (type_, scope, breaking, description) = subject;
+
+    let (_, body) = opt(tuple((line_ending, body, many0(footer))))(i)?;
+    let (body, footers) = body
+        .map(|(_, body, footers)| (Some(body), footers))
+        .unwrap_or_else(|| (None, Default::default()));
 
     Ok((type_, scope, breaking.is_some(), description, body, footers))
 }
@@ -137,7 +140,7 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
         let err = E::add_context(i, BODY, err);
-        return Err(nom::Err::Failure(err));
+        return Err(nom::Err::Error(err));
     }
 
     let mut offset = 0;
