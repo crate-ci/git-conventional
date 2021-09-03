@@ -140,7 +140,7 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
         let err = E::add_context(i, BODY, err);
-        return Err(nom::Err::Failure(err));
+        return Err(nom::Err::Error(err));
     }
 
     let mut offset = 0;

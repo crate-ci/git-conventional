@@ -371,6 +371,71 @@ mod test {
     }
 
     #[test]
+    fn test_trailing_whitespace_without_body() {
+        let commit = Commit::parse("type(my scope): hello world\n\n\n").unwrap();
+
+        assert_eq!(commit.type_(), "type");
+        assert_eq!(commit.scope().unwrap(), "my scope");
+        assert_eq!(commit.description(), "hello world");
+    }
+
+    #[test]
+    fn test_trailing_1_nl() {
+        let commit = Commit::parse("type: hello world\n").unwrap();
+
+        assert_eq!(commit.type_(), "type");
+        assert_eq!(commit.scope(), None);
+        assert_eq!(commit.description(), "hello world");
+    }
+
+    #[test]
+    fn test_trailing_2_nl() {
+        let commit = Commit::parse("type: hello world\n\n").unwrap();
+
+        assert_eq!(commit.type_(), "type");
+        assert_eq!(commit.scope(), None);
+        assert_eq!(commit.description(), "hello world");
+    }
+
+    #[test]
+    fn test_trailing_3_nl() {
+        let commit = Commit::parse("type: hello world\n\n\n").unwrap();
+
+        assert_eq!(commit.type_(), "type");
+        assert_eq!(commit.scope(), None);
+        assert_eq!(commit.description(), "hello world");
+    }
+
+    #[test]
+    fn test_parenthetical_statement() {
+        let commit = Commit::parse("type: hello world (#1)").unwrap();
+
+        assert_eq!(commit.type_(), "type");
+        assert_eq!(commit.scope(), None);
+        assert_eq!(commit.description(), "hello world (#1)");
+    }
+
+    #[test]
+    fn test_issue_12_case_1() {
+        // Looks like it was test_trailing_2_nl that triggered this to fail originally
+        let commit = Commit::parse("chore: add .hello.txt (#1)\n\n").unwrap();
+
+        assert_eq!(commit.type_(), "chore");
+        assert_eq!(commit.scope(), None);
+        assert_eq!(commit.description(), "add .hello.txt (#1)");
+    }
+
+    #[test]
+    fn test_issue_12_case_2() {
+        // Looks like it was test_trailing_2_nl that triggered this to fail originally
+        let commit = Commit::parse("refactor: use fewer lines (#3)\n\n").unwrap();
+
+        assert_eq!(commit.type_(), "refactor");
+        assert_eq!(commit.scope(), None);
+        assert_eq!(commit.description(), "use fewer lines (#3)");
+    }
+
+    #[test]
     fn test_breaking_change() {
         let commit = Commit::parse("feat!: this is a breaking change").unwrap();
         assert_eq!(Type::FEAT, commit.type_());
