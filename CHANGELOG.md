@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Fixes
+
+- Allow trailing newlines when there is no body
+
 ## [0.10.0] - 2021-08-18
 
-## Features
+### Features
 
 - `Commit::breaking_description` to handle the two potential sources for you
 
@@ -19,7 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.9.2] - 2021-05-24
 
-## Features
+### Features
 
 - `serde` feature for serializing `Commit`.
 
@@ -44,14 +48,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Forked `conventional` as `git-conventional`
 - Merged `Simple` and `Typed` APIs (identifiers are typed, otherwise `str`s), removing the need to pull in a trait.
 
-## Features
+### Features
 
 - Add typed identifier equality with `str`.
 - Added constants for common `type_`s.
 - Made it easier to find the footer that describes a breaking change.
 - Expose means to convert `str` into typed identifier with validation.
 
-## Fixes
+### Fixes
 
 <!-- next-url -->
 [Unreleased]: https://github.com/crate-ci/git-conventional/compare/v0.10.0...HEAD
