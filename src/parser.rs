@@ -3,7 +3,7 @@ use std::str;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
-use nom::character::is_alphabetic;
+use nom::character::{is_alphabetic, is_digit};
 use nom::combinator::{all_consuming, cut, eof, map, map_parser, opt, peek, verify};
 use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::multi::many0;
@@ -43,8 +43,8 @@ const fn is_line_ending(chr: char) -> bool {
 fn is_compound_noun(s: &str) -> bool {
     for item in s.chars().enumerate() {
         match item {
-            (0, chr) if !is_alphabetic(chr as u8) => return false,
-            (i, chr) if i + 1 == s.chars().count() && !is_alphabetic(chr as u8) => return false,
+            (0, chr) if !is_noun_char(chr) => return false,
+            (i, chr) if i + 1 == s.chars().count() && !is_noun_char(chr) => return false,
             (_, chr) if !is_compound_noun_char(chr) => return false,
             (_, _) => {}
         }
@@ -54,7 +54,11 @@ fn is_compound_noun(s: &str) -> bool {
 }
 
 fn is_compound_noun_char(c: char) -> bool {
-    is_alphabetic(c as u8) || c == ' ' || c == '-'
+    is_noun_char(c) || c == ' ' || c == '-'
+}
+
+fn is_noun_char(c: char) -> bool {
+    is_alphabetic(c as u8) || is_digit(c as u8)
 }
 
 pub(crate) const BREAKER: &str = "exclamation_mark";
@@ -259,6 +263,7 @@ mod tests {
             assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
             assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
             assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
+            assert_eq!(test(p, "x86").unwrap(), ("", "x86"));
 
             // invalid
             assert!(test(p, "").is_err());
@@ -270,7 +275,6 @@ mod tests {
             assert!(test(p, "_foo").is_err());
             assert!(test(p, "foo_bar").is_err());
             assert!(test(p, "foo ").is_err());
-            assert!(test(p, "foo2bar").is_err());
         }
 
         #[test]

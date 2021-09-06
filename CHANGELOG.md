@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Fixes
+
+- Support scopes with numbers in them, like `x86`
+
 ## [0.10.1] - 2021-09-03
 
 ### Fixes
