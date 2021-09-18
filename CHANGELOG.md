@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Fixes
+
+- Relaxed some lifetimes, associating them with the message, rather than `Commit`.
+
 ## [0.10.2] - 2021-09-06
 
 ### Fixes
