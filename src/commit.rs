@@ -104,7 +104,7 @@ impl<'a> Commit<'a> {
     ///
     /// Note: if no `BREAKING CHANGE` footer is provided, the `description` is expected to describe
     /// the breaking change.
-    pub fn breaking_description(&self) -> Option<&str> {
+    pub fn breaking_description(&self) -> Option<&'a str> {
         self.breaking_description
     }
 
@@ -114,7 +114,7 @@ impl<'a> Commit<'a> {
     /// requiring whitespace before newlines.
     ///
     /// See: <https://git-scm.com/docs/git-interpret-trailers>
-    pub fn footers(&self) -> &[Footer<'_>] {
+    pub fn footers(&self) -> &[Footer<'a>] {
         &self.footers
     }
 }
