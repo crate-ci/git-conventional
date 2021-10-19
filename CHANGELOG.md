@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Breaking Changes
+
+- Some grammar changes *might* have made us more restrictive, but more likely they have made parsing more loose
+- `FooterSeparator` variants have been renamed
+
+### Fixes
+
+- Parser is now closer to [the proposed grammar](https://github.com/conventional-commits/parser)
+
 ## [0.10.3] - 2021-09-18
 
 ### Fixes
