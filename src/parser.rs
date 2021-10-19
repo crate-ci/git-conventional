@@ -3,12 +3,12 @@ use std::str;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
-use nom::character::{is_alphabetic, is_digit};
-use nom::combinator::{all_consuming, cut, eof, map, map_parser, opt, peek, verify};
+use nom::combinator::{cut, eof, map, opt, peek};
 use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
+use nom::Parser;
 
 type CommitDetails<'a> = (
     &'a str,
@@ -22,8 +22,49 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
-    let (i, subject) = terminated(subject, alt((line_ending, eof)))(i)?;
-    let (type_, scope, breaking, description) = subject;
+    message(i)
+}
+
+// <CR>              ::= "0x000D"
+// <LF>              ::= "0x000A"
+// <newline>         ::= [<CR>], <LF>
+fn is_line_ending(c: char) -> bool {
+    c == '\n' || c == '\r'
+}
+
+// <parens>          ::= "(" | ")"
+fn is_parens(c: char) -> bool {
+    c == '(' || c == ')'
+}
+
+// <ZWNBSP>          ::= "U+FEFF"
+// <TAB>             ::= "U+0009"
+// <VT>              ::= "U+000B"
+// <FF>              ::= "U+000C"
+// <SP>              ::= "U+0020"
+// <NBSP>            ::= "U+00A0"
+// /* See: https://www.ecma-international.org/ecma-262/11.0/index.html#sec-white-space */
+// <USP>             ::= "Any other Unicode 'Space_Separator' code point"
+// /* Any non-newline whitespace: */
+// <whitespace>      ::= <ZWNBSP> | <TAB> | <VT> | <FF> | <SP> | <NBSP> | <USP>
+fn is_whitespace(c: char) -> bool {
+    c.is_whitespace()
+}
+
+fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
+    take_while(is_whitespace)(i)
+}
+
+// <message>         ::= <summary>, <newline>+, <body>, (<newline>+, <footer>)*
+//                    |  <summary>, (<newline>+, <footer>)*
+//                    |  <summary>, <newline>*
+pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> Result<CommitDetails<'a>, nom::Err<E>> {
+    let (i, summary) = terminated(summary, alt((line_ending, eof)))(i)?;
+    let (type_, scope, breaking, description) = summary;
 
     let (_, body) = opt(tuple((line_ending, body, many0(footer))))(i)?;
     let (body, footers) = body
@@ -33,110 +74,55 @@ pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     Ok((type_, scope, breaking.is_some(), description, body, footers))
 }
 
-#[inline]
-const fn is_line_ending(chr: char) -> bool {
-    chr == '\n'
-}
-
-/// Accepts any non-empty string slice which starts and ends with an alphabetic
-/// character, and has any compound noun character in between.
-fn is_compound_noun(s: &str) -> bool {
-    for item in s.chars().enumerate() {
-        match item {
-            (0, chr) if !is_noun_char(chr) => return false,
-            (i, chr) if i + 1 == s.chars().count() && !is_noun_char(chr) => return false,
-            (_, chr) if !is_compound_noun_char(chr) => return false,
-            (_, _) => {}
-        }
-    }
-
-    !s.is_empty()
-}
-
-fn is_compound_noun_char(c: char) -> bool {
-    is_noun_char(c) || c == ' ' || c == '-'
-}
-
-fn is_noun_char(c: char) -> bool {
-    is_alphabetic(c as u8) || is_digit(c as u8)
-}
-
-pub(crate) const BREAKER: &str = "exclamation_mark";
-
-fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+// <type>            ::= <any UTF8-octets except newline or parens or ":" or "!:" or whitespace>+
+pub(crate) fn type_<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-    context(BREAKER, tag("!"))(i)
-}
-
-pub(crate) const FORMAT: &str = "format";
-
-fn colon<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    context(FORMAT, tag(":"))(i)
-}
-
-fn space<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    context(FORMAT, tag(" "))(i)
+    context(
+        TYPE,
+        take_while1(|c: char| {
+            !is_line_ending(c) && !is_parens(c) && c != ':' && c != '!' && !is_whitespace(c)
+        }),
+    )(i)
 }
 
 pub(crate) const TYPE: &str = "type";
 
-pub(crate) fn type_<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    context(TYPE, take_while1(|c: char| is_alphabetic(c as u8)))(i)
-}
-
-pub(crate) const SCOPE: &str = "scope";
-
+// <scope>           ::= <any UTF8-octets except newline or parens>+
 pub(crate) fn scope<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
     context(
         SCOPE,
-        map_parser(
-            take_till1(|c: char| c == ')'),
-            all_consuming(verify(take_while(is_compound_noun_char), is_compound_noun)),
-        ),
+        take_while1(|c: char| !is_line_ending(c) && !is_parens(c)),
     )(i)
 }
 
-pub(crate) const DESCRIPTION: &str = "description";
+pub(crate) const SCOPE: &str = "scope";
 
-fn description<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    context(
-        DESCRIPTION,
-        verify(take_till1(is_line_ending), |s: &str| {
-            let first = s.chars().next();
-            let last = s.chars().last();
-
-            match (first, last) {
-                (Some(' '), _) | (_, Some(' ')) => false,
-                (_, _) => true,
-            }
-        }),
-    )(i)
-}
-
+// /* "!" should be added to the AST as a <breaking-change> node with the value "!" */
+// <summary>         ::= <type>, "(", <scope>, ")", ["!"], ":", <whitespace>*, <text>
+//                    |  <type>, ["!"], ":", <whitespace>*, <text>
 #[allow(clippy::type_complexity)]
-fn subject<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+fn summary<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
     tuple((
         type_,
         opt(delimited(char('('), cut(scope), char(')'))),
         opt(exclamation_mark),
-        preceded(tuple((colon, space)), description),
+        preceded(tuple((tag(":"), whitespace)), context(DESCRIPTION, text)),
     ))(i)
 }
 
-pub(crate) const BODY: &str = "body";
+pub(crate) const DESCRIPTION: &str = "description";
+
+// <text>            ::= <any UTF8-octets except newline>*
+fn text<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
+    take_till1(is_line_ending)(i)
+}
 
 fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
@@ -149,7 +135,7 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
     let mut offset = 0;
     for line in i.lines() {
-        if peek::<_, _, E, _>(tuple((footer_token, footer_separator)))(line).is_ok() {
+        if peek::<_, _, E, _>(tuple((token, separator)))(line).is_ok() {
             offset += 1;
             break;
         }
@@ -160,39 +146,44 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     map(take(offset - 1), str::trim_end)(i)
 }
 
+pub(crate) const BODY: &str = "body";
+
+// <footer>          ::= <token>, <separator>, <whitespace>*, <value>
 fn footer<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, &'a str, &'a str), E> {
-    tuple((footer_token, footer_separator, footer_value))(i)
+    tuple((token, separator, whitespace, value))
+        .map(|(ft, s, _, fv)| (ft, s, fv))
+        .parse(i)
 }
 
-pub(crate) fn footer_token<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+// <token>           ::= <breaking-change>
+//                    |  <type>
+pub(crate) fn token<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-    alt((
-        tag("BREAKING CHANGE"),
-        take_while1(|c: char| is_alphabetic(c as u8) || c == '-'),
-    ))(i)
+    alt((tag("BREAKING CHANGE"), type_))(i)
 }
 
-fn footer_separator<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+// <separator>       ::= ":" | " #"
+fn separator<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-    alt((tag(": "), tag(" #")))(i)
+    alt((tag(":"), tag(" #")))(i)
 }
 
-pub(crate) fn footer_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
-        let err = E::add_context(i, "footer_value", err);
+        let err = E::add_context(i, "value", err);
         return Err(nom::Err::Failure(err));
     }
 
     let mut offset = 0;
     for line in i.lines() {
-        if peek::<_, _, E, _>(tuple((footer_token, footer_separator)))(line).is_ok() {
+        if peek::<_, _, E, _>(tuple((token, separator)))(line).is_ok() {
             offset += 1;
             break;
         }
@@ -202,6 +193,14 @@ pub(crate) fn footer_value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 
     map(take(offset - 1), str::trim_end)(i)
 }
+
+fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
+    context(BREAKER, tag("!"))(i)
+}
+
+pub(crate) const BREAKER: &str = "exclamation_mark";
 
 #[cfg(test)]
 #[allow(clippy::non_ascii_literal)]
@@ -223,7 +222,7 @@ mod tests {
         })
     }
 
-    mod subject {
+    mod summary {
         use super::*;
 
         #[test]
@@ -235,10 +234,11 @@ mod tests {
             assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
             assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
             assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
-            assert_eq!(test(p, "foo2bar").unwrap(), ("2bar", "foo"));
-            assert_eq!(test(p, "foo-bar").unwrap(), ("-bar", "foo"));
+            assert_eq!(test(p, "foo2bar").unwrap(), ("", "foo2bar"));
+            assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
             assert_eq!(test(p, "foo bar").unwrap(), (" bar", "foo"));
             assert_eq!(test(p, "foo: bar").unwrap(), (": bar", "foo"));
+            assert_eq!(test(p, "foo!: bar").unwrap(), ("!: bar", "foo"));
             assert_eq!(test(p, "foo(bar").unwrap(), ("(bar", "foo"));
             assert_eq!(test(p, "foo ").unwrap(), (" ", "foo"));
 
@@ -247,7 +247,6 @@ mod tests {
             assert!(test(p, " ").is_err());
             assert!(test(p, "  ").is_err());
             assert!(test(p, ")").is_err());
-            assert!(test(p, "@").is_err());
             assert!(test(p, " feat").is_err());
             assert!(test(p, " feat ").is_err());
         }
@@ -267,19 +266,12 @@ mod tests {
 
             // invalid
             assert!(test(p, "").is_err());
-            assert!(test(p, " ").is_err());
-            assert!(test(p, "  ").is_err());
             assert!(test(p, ")").is_err());
-            assert!(test(p, "@").is_err());
-            assert!(test(p, "-foo").is_err());
-            assert!(test(p, "_foo").is_err());
-            assert!(test(p, "foo_bar").is_err());
-            assert!(test(p, "foo ").is_err());
         }
 
         #[test]
-        fn test_description() {
-            let p = description::<VerboseError<&str>>;
+        fn test_text() {
+            let p = text::<VerboseError<&str>>;
 
             // valid
             assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
@@ -292,16 +284,11 @@ mod tests {
 
             // invalid
             assert!(test(p, "").is_err());
-            assert!(test(p, " ").is_err());
-            assert!(test(p, "  ").is_err());
-            assert!(test(p, "foo ").is_err());
-            assert!(test(p, " foo").is_err());
-            assert!(test(p, " foo ").is_err());
         }
 
         #[test]
-        fn test_subject() {
-            let p = subject::<VerboseError<&str>>;
+        fn test_summary() {
+            let p = summary::<VerboseError<&str>>;
 
             // valid
             assert_eq!(
@@ -310,6 +297,10 @@ mod tests {
             );
             assert_eq!(
                 test(p, "foo(bar): baz").unwrap(),
+                ("", ("foo", Some("bar"), None, "baz"))
+            );
+            assert_eq!(
+                test(p, "foo(bar):     baz").unwrap(),
                 ("", ("foo", Some("bar"), None, "baz"))
             );
             assert_eq!(
@@ -335,6 +326,7 @@ mod tests {
             assert!(test(p, "foo(bar)").is_err());
             assert!(test(p, "foo(bar):").is_err());
             assert!(test(p, "foo(bar): ").is_err());
+            assert!(test(p, "foo(bar):  ").is_err());
             assert!(test(p, "foo(bar) :baz").is_err());
             assert!(test(p, "foo(bar) : baz").is_err());
             assert!(test(p, "foo (bar): baz").is_err());
@@ -386,23 +378,23 @@ mod tests {
             // valid
             assert_eq!(
                 test(p, "hello: world").unwrap(),
-                ("", ("hello", ": ", "world"))
+                ("", ("hello", ":", "world"))
             );
             assert_eq!(
                 test(p, "BREAKING CHANGE: woops!").unwrap(),
-                ("", ("BREAKING CHANGE", ": ", "woops!"))
+                ("", ("BREAKING CHANGE", ":", "woops!"))
             );
             assert_eq!(
                 test(p, "Co-Authored-By: Marge Simpson <marge@simpsons.com>").unwrap(),
                 (
                     "",
-                    ("Co-Authored-By", ": ", "Marge Simpson <marge@simpsons.com>")
+                    ("Co-Authored-By", ":", "Marge Simpson <marge@simpsons.com>")
                 )
             );
             assert_eq!(test(p, "Closes #12").unwrap(), ("", ("Closes", " #", "12")));
             assert_eq!(
                 test(p, "BREAKING-CHANGE: broken").unwrap(),
-                ("", ("BREAKING-CHANGE", ": ", "broken"))
+                ("", ("BREAKING-CHANGE", ":", "broken"))
             );
 
             // invalid

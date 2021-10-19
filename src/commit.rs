@@ -187,19 +187,19 @@ impl<'a> Footer<'a> {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum FooterSeparator {
-    /// ": "
-    ColonSpace,
+    /// ":"
+    Value,
 
     /// " #"
-    SpacePound,
+    Ref,
 }
 
 impl FooterSeparator {
     /// Access `str` representation of FooterSeparator
     pub fn as_str(self) -> &'static str {
         match self {
-            FooterSeparator::ColonSpace => ": ",
-            FooterSeparator::SpacePound => " #",
+            FooterSeparator::Value => ":",
+            FooterSeparator::Ref => " #",
         }
     }
 }
@@ -229,8 +229,8 @@ impl FromStr for FooterSeparator {
 
     fn from_str(sep: &str) -> Result<Self, Self::Err> {
         match sep {
-            ": " => Ok(FooterSeparator::ColonSpace),
-            " #" => Ok(FooterSeparator::SpacePound),
+            ":" => Ok(FooterSeparator::Value),
+            " #" => Ok(FooterSeparator::Ref),
             _ => {
                 Err(Error::new(ErrorKind::InvalidFooter)
                     .set_context(Box::new(format!("{:?}", sep))))
@@ -340,7 +340,7 @@ impl<'a> Scope<'a> {
 impl<'a> FooterToken<'a> {
     /// Parse a `str` into a `FooterToken`.
     pub fn parse(sep: &'a str) -> Result<Self, Error> {
-        let (i, t) = crate::parser::footer_token(sep).map_err(|err| Error::with_nom(sep, err))?;
+        let (i, t) = crate::parser::token(sep).map_err(|err| Error::with_nom(sep, err))?;
         if !i.is_empty() {
             return Err(Error::new(ErrorKind::InvalidScope));
         }
