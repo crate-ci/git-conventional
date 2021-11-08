@@ -11,23 +11,13 @@ readme = "README.md"
 categories = ["parser-implementations"]
 keywords = ["parser", "git", "conventional-commit", "commit", "conventional"]
 edition = "2018"
-exclude = [
-    ".gitignore",
-    "CHANGELOG.md",
-    "CONTRIBUTING.md",
-    "release.toml",
-    "typos.toml",
-    "committed.toml",
-    ".pre-commit-config.yaml",
-    "docs/**",
-    ".github/**",
-    "tests/**",
-    "benches/**",
+include = [
+  "src/**/*",
+  "Cargo.toml",
+  "LICENSE*",
+  "README.md",
+  "examples/**/*"
 ]
-
-[badges]
-codecov = { repository = "crate-ci/git-conventional" }
-maintenance = { status = "passively-maintained" }
 
 [package.metadata.release]
 pre-release-replacements = [
