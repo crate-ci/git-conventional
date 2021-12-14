@@ -111,14 +111,18 @@ pub(crate) const SCOPE: &str = "scope";
 fn summary<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
-    tuple((
-        type_,
-        opt(delimited(char('('), cut(scope), char(')'))),
-        opt(exclamation_mark),
-        preceded(tuple((tag(":"), whitespace)), context(DESCRIPTION, text)),
-    ))(i)
+    context(
+        SUMMARY,
+        tuple((
+            type_,
+            opt(delimited(char('('), cut(scope), char(')'))),
+            opt(exclamation_mark),
+            preceded(tuple((tag(":"), whitespace)), context(DESCRIPTION, text)),
+        )),
+    )(i)
 }
 
+pub(crate) const SUMMARY: &str = "SUMMARY";
 pub(crate) const DESCRIPTION: &str = "description";
 
 // <text>            ::= <any UTF8-octets except newline>*
@@ -235,7 +239,7 @@ mod tests {
             let input = "Hello World";
             let err = test(p, input).unwrap_err();
             let err = crate::Error::with_nom(input, err);
-            assert_eq!(err.to_string(), "invalid commit format");
+            assert_eq!(err.to_string(), "Missing type definition");
         }
     }
 

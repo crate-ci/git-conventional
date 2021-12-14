@@ -31,6 +31,7 @@ impl Error {
                 for (_input, context) in &err.errors {
                     kind = match context {
                         Context(string) => match *string {
+                            crate::parser::SUMMARY => MissingType,
                             crate::parser::TYPE => MissingType,
                             crate::parser::SCOPE => InvalidScope,
                             crate::parser::DESCRIPTION => MissingDescription,
