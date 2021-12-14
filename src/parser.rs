@@ -22,7 +22,8 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
-    message(i)
+    let (_i, c) = message(i)?;
+    Ok(c)
 }
 
 // <CR>              ::= "0x000D"
@@ -62,16 +63,19 @@ fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 //                    |  <summary>, <newline>*
 pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
-) -> Result<CommitDetails<'a>, nom::Err<E>> {
+) -> IResult<&'a str, CommitDetails<'a>, E> {
     let (i, summary) = terminated(summary, alt((line_ending, eof)))(i)?;
     let (type_, scope, breaking, description) = summary;
 
-    let (_, body) = opt(tuple((line_ending, body, many0(footer))))(i)?;
+    let (i, body) = opt(tuple((line_ending, body, many0(footer))))(i)?;
     let (body, footers) = body
         .map(|(_, body, footers)| (Some(body), footers))
         .unwrap_or_else(|| (None, Default::default()));
 
-    Ok((type_, scope, breaking.is_some(), description, body, footers))
+    Ok((
+        i,
+        (type_, scope, breaking.is_some(), description, body, footers),
+    ))
 }
 
 // <type>            ::= <any UTF8-octets except newline or parens or ":" or "!:" or whitespace>+
@@ -107,14 +111,18 @@ pub(crate) const SCOPE: &str = "scope";
 fn summary<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> IResult<&'a str, (&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
-    tuple((
-        type_,
-        opt(delimited(char('('), cut(scope), char(')'))),
-        opt(exclamation_mark),
-        preceded(tuple((tag(":"), whitespace)), context(DESCRIPTION, text)),
-    ))(i)
+    context(
+        SUMMARY,
+        tuple((
+            type_,
+            opt(delimited(char('('), cut(scope), char(')'))),
+            opt(exclamation_mark),
+            preceded(tuple((tag(":"), whitespace)), context(DESCRIPTION, text)),
+        )),
+    )(i)
 }
 
+pub(crate) const SUMMARY: &str = "SUMMARY";
 pub(crate) const DESCRIPTION: &str = "description";
 
 // <text>            ::= <any UTF8-octets except newline>*
@@ -220,6 +228,19 @@ mod tests {
             }
             _ => unreachable!(),
         })
+    }
+
+    mod message {
+        use super::*;
+        #[test]
+        fn errors() {
+            let p = message::<VerboseError<&str>>;
+
+            let input = "Hello World";
+            let err = test(p, input).unwrap_err();
+            let err = crate::Error::with_nom(input, err);
+            assert_eq!(err.to_string(), crate::ErrorKind::MissingType.to_string());
+        }
     }
 
     mod summary {

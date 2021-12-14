@@ -24,22 +24,25 @@ impl Error {
         use nom::error::VerboseErrorKind::*;
         use ErrorKind::*;
 
-        let kind = match err {
+        let mut kind = InvalidFormat;
+        match err {
             nom::Err::Incomplete(_) => unreachable!(),
-            nom::Err::Error(err) | nom::Err::Failure(err) => match err.errors.last() {
-                None => unreachable!("you found a bug!"),
-                Some((_, kind)) => match kind {
-                    Context(string) => match *string {
-                        crate::parser::TYPE => MissingType,
-                        crate::parser::SCOPE => InvalidScope,
-                        crate::parser::DESCRIPTION => MissingDescription,
-                        crate::parser::BODY => InvalidBody,
-                        _ => InvalidFormat,
-                    },
-                    Char(_) | Nom(_) => InvalidFormat,
-                },
-            },
-        };
+            nom::Err::Error(err) | nom::Err::Failure(err) => {
+                for (_input, context) in &err.errors {
+                    kind = match context {
+                        Context(string) => match *string {
+                            crate::parser::SUMMARY => MissingType,
+                            crate::parser::TYPE => MissingType,
+                            crate::parser::SCOPE => InvalidScope,
+                            crate::parser::DESCRIPTION => MissingDescription,
+                            crate::parser::BODY => InvalidBody,
+                            _ => kind,
+                        },
+                        _ => kind,
+                    };
+                }
+            }
+        }
 
         Self {
             kind,
@@ -112,12 +115,18 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            ErrorKind::MissingType => "Missing type definition",
-            ErrorKind::InvalidScope => "Invalid scope format",
-            ErrorKind::MissingDescription => "Missing commit description",
-            ErrorKind::InvalidBody => "invalid body format",
-            ErrorKind::InvalidFooter => "invalid body footer",
-            ErrorKind::InvalidFormat => "invalid commit format",
+            ErrorKind::MissingType => {
+                "Missing type in the commit summary, expected `type: description`"
+            }
+            ErrorKind::InvalidScope => {
+                "Incorrect scope syntax in commit summary, expected `type(scope): description`"
+            }
+            ErrorKind::MissingDescription => {
+                "Missing description in commit summary, expected `type: description`"
+            }
+            ErrorKind::InvalidBody => "Incorrect body syntax",
+            ErrorKind::InvalidFooter => "Incorrect footer syntax",
+            ErrorKind::InvalidFormat => "Incorrect conventional commit format",
         };
         f.write_str(s)
     }
