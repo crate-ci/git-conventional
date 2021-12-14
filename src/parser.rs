@@ -22,7 +22,8 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
-    message(i)
+    let (_i, c) = message(i)?;
+    Ok(c)
 }
 
 // <CR>              ::= "0x000D"
@@ -62,16 +63,19 @@ fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
 //                    |  <summary>, <newline>*
 pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
-) -> Result<CommitDetails<'a>, nom::Err<E>> {
+) -> IResult<&'a str, CommitDetails<'a>, E> {
     let (i, summary) = terminated(summary, alt((line_ending, eof)))(i)?;
     let (type_, scope, breaking, description) = summary;
 
-    let (_, body) = opt(tuple((line_ending, body, many0(footer))))(i)?;
+    let (i, body) = opt(tuple((line_ending, body, many0(footer))))(i)?;
     let (body, footers) = body
         .map(|(_, body, footers)| (Some(body), footers))
         .unwrap_or_else(|| (None, Default::default()));
 
-    Ok((type_, scope, breaking.is_some(), description, body, footers))
+    Ok((
+        i,
+        (type_, scope, breaking.is_some(), description, body, footers),
+    ))
 }
 
 // <type>            ::= <any UTF8-octets except newline or parens or ":" or "!:" or whitespace>+
@@ -220,6 +224,19 @@ mod tests {
             }
             _ => unreachable!(),
         })
+    }
+
+    mod message {
+        use super::*;
+        #[test]
+        fn errors() {
+            let p = message::<VerboseError<&str>>;
+
+            let input = "Hello World";
+            let err = test(p, input).unwrap_err();
+            let err = crate::Error::with_nom(input, err);
+            assert_eq!(err.to_string(), "invalid commit format");
+        }
     }
 
     mod summary {
