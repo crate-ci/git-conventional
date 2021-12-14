@@ -24,22 +24,24 @@ impl Error {
         use nom::error::VerboseErrorKind::*;
         use ErrorKind::*;
 
-        let kind = match err {
+        let mut kind = InvalidFormat;
+        match err {
             nom::Err::Incomplete(_) => unreachable!(),
-            nom::Err::Error(err) | nom::Err::Failure(err) => match err.errors.last() {
-                None => unreachable!("you found a bug!"),
-                Some((_, kind)) => match kind {
-                    Context(string) => match *string {
-                        crate::parser::TYPE => MissingType,
-                        crate::parser::SCOPE => InvalidScope,
-                        crate::parser::DESCRIPTION => MissingDescription,
-                        crate::parser::BODY => InvalidBody,
-                        _ => InvalidFormat,
-                    },
-                    Char(_) | Nom(_) => InvalidFormat,
-                },
-            },
-        };
+            nom::Err::Error(err) | nom::Err::Failure(err) => {
+                for (_input, context) in &err.errors {
+                    kind = match context {
+                        Context(string) => match *string {
+                            crate::parser::TYPE => MissingType,
+                            crate::parser::SCOPE => InvalidScope,
+                            crate::parser::DESCRIPTION => MissingDescription,
+                            crate::parser::BODY => InvalidBody,
+                            _ => kind,
+                        },
+                        _ => kind,
+                    };
+                }
+            }
+        }
 
         Self {
             kind,
