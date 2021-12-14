@@ -239,7 +239,7 @@ mod tests {
             let input = "Hello World";
             let err = test(p, input).unwrap_err();
             let err = crate::Error::with_nom(input, err);
-            assert_eq!(err.to_string(), "Missing type definition");
+            assert_eq!(err.to_string(), crate::ErrorKind::MissingType.to_string());
         }
     }
 
