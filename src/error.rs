@@ -118,9 +118,9 @@ impl fmt::Display for ErrorKind {
             ErrorKind::MissingType => "Missing type definition",
             ErrorKind::InvalidScope => "Invalid scope format",
             ErrorKind::MissingDescription => "Missing commit description",
-            ErrorKind::InvalidBody => "invalid body format",
-            ErrorKind::InvalidFooter => "invalid body footer",
-            ErrorKind::InvalidFormat => "invalid commit format",
+            ErrorKind::InvalidBody => "Invalid body format",
+            ErrorKind::InvalidFooter => "Invalid body footer",
+            ErrorKind::InvalidFormat => "Invalid commit format",
         };
         f.write_str(s)
     }
