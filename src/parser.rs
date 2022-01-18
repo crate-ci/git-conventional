@@ -240,6 +240,11 @@ mod tests {
             let err = test(p, input).unwrap_err();
             let err = crate::Error::with_nom(input, err);
             assert_eq!(err.to_string(), crate::ErrorKind::MissingType.to_string());
+
+            let input = "fix Improved error messages\n";
+            let err = test(p, input).unwrap_err();
+            let err = crate::Error::with_nom(input, err);
+            assert_eq!(err.to_string(), crate::ErrorKind::MissingType.to_string());
         }
     }
 
