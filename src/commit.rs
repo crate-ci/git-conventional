@@ -472,6 +472,26 @@ mod test {
     }
 
     #[test]
+    fn test_extra_line_endings() {
+        let commit =
+            Commit::parse("feat: thing\n\n\n\n\nbody\n\n\n\n\ncloses #1234\n\n\n\n\n\nBREAKING CHANGE: something broke\n\n\n\n")
+                .unwrap();
+        assert_eq!(commit.body(), Some("body"));
+        assert_eq!(
+            commit.footers(),
+            [
+                Footer::new(FooterToken("closes".into()), FooterSeparator::Ref, "1234"),
+                Footer::new(
+                    FooterToken("BREAKING CHANGE".into()),
+                    FooterSeparator::Value,
+                    "something broke"
+                ),
+            ]
+        );
+        assert_eq!(commit.breaking_description(), Some("something broke"));
+    }
+
+    #[test]
     fn test_valid_complex_commit() {
         let commit = indoc! {"
             chore: improve changelog readability
