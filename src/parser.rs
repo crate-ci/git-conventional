@@ -143,16 +143,7 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         return Err(nom::Err::Error(err));
     }
 
-    let mut offset = 0;
-    for line in crate::lines::LinesWithTerminator::new(i) {
-        if peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok() {
-            break;
-        }
-
-        offset += line.chars().count();
-    }
-
-    map(take(offset), str::trim_end)(i)
+    take_until_footer(i)
 }
 
 pub(crate) const BODY: &str = "body";
@@ -190,6 +181,12 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         return Err(nom::Err::Failure(err));
     }
 
+    take_until_footer(i)
+}
+
+fn take_until_footer<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     let mut offset = 0;
     for line in crate::lines::LinesWithTerminator::new(i) {
         if peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok() {
