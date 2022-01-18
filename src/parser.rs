@@ -23,6 +23,7 @@ pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
     let (_i, c) = message(i)?;
+    debug_assert!(_i.is_empty(), "{:?} remaining", _i);
     Ok(c)
 }
 
@@ -71,6 +72,7 @@ pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (body, footers) = body
         .map(|(_, body, footers)| (Some(body), footers))
         .unwrap_or_else(|| (None, Default::default()));
+    let (i, _trailing) = many0(line_ending)(i)?;
 
     Ok((
         i,
