@@ -144,16 +144,15 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     }
 
     let mut offset = 0;
-    for line in i.lines() {
-        if peek::<_, _, E, _>(tuple((token, separator)))(line).is_ok() {
-            offset += 1;
+    for line in crate::lines::LinesWithTerminator::new(i) {
+        if peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok() {
             break;
         }
 
-        offset += line.chars().count() + 1;
+        offset += line.chars().count();
     }
 
-    map(take(offset - 1), str::trim_end)(i)
+    map(take(offset), str::trim_end)(i)
 }
 
 pub(crate) const BODY: &str = "body";
@@ -192,16 +191,15 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     }
 
     let mut offset = 0;
-    for line in i.lines() {
-        if peek::<_, _, E, _>(tuple((token, separator)))(line).is_ok() {
-            offset += 1;
+    for line in crate::lines::LinesWithTerminator::new(i) {
+        if peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok() {
             break;
         }
 
-        offset += line.chars().count() + 1;
+        offset += line.chars().count();
     }
 
-    map(take(offset - 1), str::trim_end)(i)
+    map(take(offset), str::trim_end)(i)
 }
 
 fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
