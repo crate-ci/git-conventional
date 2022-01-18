@@ -51,6 +51,7 @@
 
 mod commit;
 mod error;
+mod lines;
 mod parser;
 
 pub use commit::{Commit, Footer, FooterSeparator, FooterToken, Scope, Type};

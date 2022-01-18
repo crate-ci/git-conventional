@@ -5,7 +5,7 @@ use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
 use nom::combinator::{cut, eof, map, opt, peek};
 use nom::error::{context, ContextError, ErrorKind, ParseError};
-use nom::multi::many0;
+use nom::multi::{many0, many1};
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 use nom::Parser;
@@ -23,6 +23,7 @@ pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
     let (_i, c) = message(i)?;
+    debug_assert!(_i.is_empty(), "{:?} remaining", _i);
     Ok(c)
 }
 
@@ -67,10 +68,11 @@ pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
     let (i, summary) = terminated(summary, alt((line_ending, eof)))(i)?;
     let (type_, scope, breaking, description) = summary;
 
-    let (i, body) = opt(tuple((line_ending, body, many0(footer))))(i)?;
+    let (i, body) = opt(tuple((many1(line_ending), body, many0(footer))))(i)?;
     let (body, footers) = body
         .map(|(_, body, footers)| (Some(body), footers))
         .unwrap_or_else(|| (None, Default::default()));
+    let (i, _trailing) = many0(line_ending)(i)?;
 
     Ok((
         i,
@@ -141,17 +143,7 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         return Err(nom::Err::Error(err));
     }
 
-    let mut offset = 0;
-    for line in i.lines() {
-        if peek::<_, _, E, _>(tuple((token, separator)))(line).is_ok() {
-            offset += 1;
-            break;
-        }
-
-        offset += line.chars().count() + 1;
-    }
-
-    map(take(offset - 1), str::trim_end)(i)
+    take_until_footer(i)
 }
 
 pub(crate) const BODY: &str = "body";
@@ -189,17 +181,22 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
         return Err(nom::Err::Failure(err));
     }
 
+    take_until_footer(i)
+}
+
+fn take_until_footer<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
     let mut offset = 0;
-    for line in i.lines() {
-        if peek::<_, _, E, _>(tuple((token, separator)))(line).is_ok() {
-            offset += 1;
+    for line in crate::lines::LinesWithTerminator::new(i) {
+        if peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok() {
             break;
         }
 
-        offset += line.chars().count() + 1;
+        offset += line.chars().count();
     }
 
-    map(take(offset - 1), str::trim_end)(i)
+    map(take(offset), str::trim_end)(i)
 }
 
 fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str>>(
