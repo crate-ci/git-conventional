@@ -143,7 +143,7 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
         return Err(nom::Err::Error(err));
     }
 
-    take_until_footer(i)
+    take_until_first_footer(i)
 }
 
 pub(crate) const BODY: &str = "body";
@@ -181,10 +181,28 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fm
         return Err(nom::Err::Failure(err));
     }
 
-    take_until_footer(i)
+    take_until_next_footer(i)
 }
 
-fn take_until_footer<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
+fn take_until_first_footer<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
+    i: &'a str,
+) -> IResult<&'a str, &'a str, E> {
+    let mut offset = 0;
+    let mut prior_is_empty = true;
+    for line in crate::lines::LinesWithTerminator::new(i) {
+        if prior_is_empty && peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok()
+        {
+            break;
+        }
+        prior_is_empty = line.trim().is_empty();
+
+        offset += line.chars().count();
+    }
+
+    map(take(offset), str::trim_end)(i)
+}
+
+fn take_until_next_footer<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
     let mut offset = 0;

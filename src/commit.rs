@@ -512,6 +512,34 @@ mod test {
     }
 
     #[test]
+    fn test_fake_footer() {
+        let commit = indoc! {"
+            fix: something something
+
+            First line of the body
+            IMPORTANT: Please see something else for details.
+            Another line here.
+        "};
+
+        let commit = Commit::parse(commit).unwrap();
+
+        assert_eq!(Type::FIX, commit.type_());
+        assert_eq!(None, commit.scope());
+        assert_eq!("something something", commit.description());
+        assert_eq!(
+            Some(indoc!(
+                "
+                First line of the body
+                IMPORTANT: Please see something else for details.
+                Another line here."
+            )),
+            commit.body()
+        );
+        let empty_footer: &[Footer<'_>] = &[];
+        assert_eq!(empty_footer, commit.footers());
+    }
+
+    #[test]
     fn test_valid_complex_commit() {
         let commit = indoc! {"
             chore: improve changelog readability
