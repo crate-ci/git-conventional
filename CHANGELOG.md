@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Fixes
+
+- Don't treat body text as a footer but require a newline
+
 ## [0.11.2] - 2022-01-18
 
 ### Fixes
