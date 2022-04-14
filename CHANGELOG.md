@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## [0.11.3] - 2022-04-14
+
 ### Fixes
 
 - Don't treat body text as a footer but require a newline
@@ -100,7 +102,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixes
 
 <!-- next-url -->
-[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v0.11.3...HEAD
+[0.11.3]: https://github.com/crate-ci/git-conventional/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/crate-ci/git-conventional/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/crate-ci/git-conventional/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/crate-ci/git-conventional/compare/v0.10.3...v0.11.0
