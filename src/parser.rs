@@ -5,7 +5,7 @@ use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
 use nom::combinator::{cut, eof, map, opt, peek};
 use nom::error::{context, ContextError, ErrorKind, ParseError};
-use nom::multi::{many0, many1};
+use nom::multi::many0;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 use nom::Parser;
@@ -68,11 +68,15 @@ pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::
     let (i, summary) = terminated(summary, alt((line_ending, eof)))(i)?;
     let (type_, scope, breaking, description) = summary;
 
-    let (i, body) = opt(tuple((many1(line_ending), body, many0(footer))))(i)?;
+    // The body MUST begin one blank line after the description.
+    let (i, _) = context(BODY, alt((line_ending, eof)))(i)?;
+
+    let (i, _extra) = many0(line_ending)(i)?;
+
+    let (i, body) = opt(tuple((body, many0(footer), many0(line_ending))))(i)?;
     let (body, footers) = body
-        .map(|(_, body, footers)| (Some(body), footers))
+        .map(|(body, footers, _)| (Some(body), footers))
         .unwrap_or_else(|| (None, Default::default()));
-    let (i, _trailing) = many0(line_ending)(i)?;
 
     Ok((
         i,
