@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Fixes
+
+- Error when a newline doesn't separate summary from description
+
 ## [0.11.3] - 2022-04-14
 
 ### Fixes
