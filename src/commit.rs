@@ -416,6 +416,15 @@ mod test {
     }
 
     #[test]
+    fn test_multiline_description() {
+        let err = Commit::parse(
+            "chore: Automate fastlane when a file in the fastlane directory is\nchanged (hopefully)",
+        ).unwrap_err();
+
+        assert_eq!(ErrorKind::InvalidBody, err.kind());
+    }
+
+    #[test]
     fn test_issue_12_case_1() {
         // Looks like it was test_trailing_2_nl that triggered this to fail originally
         let commit = Commit::parse("chore: add .hello.txt (#1)\n\n").unwrap();
