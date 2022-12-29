@@ -22,7 +22,7 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
-    let (_i, c) = message(i)?;
+    let (_i, c) = trace("message", message)(i)?;
     debug_assert!(_i.is_empty(), "{:?} remaining", _i);
     Ok(c)
 }
@@ -65,7 +65,7 @@ fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Deb
 pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> IResult<&'a str, CommitDetails<'a>, E> {
-    let (i, summary) = terminated(summary, alt((line_ending, eof)))(i)?;
+    let (i, summary) = terminated(trace("summary", summary), alt((line_ending, eof)))(i)?;
     let (type_, scope, breaking, description) = summary;
 
     // The body MUST begin one blank line after the description.
@@ -73,7 +73,11 @@ pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::
 
     let (i, _extra) = many0(line_ending)(i)?;
 
-    let (i, body) = opt(tuple((body, many0(footer), many0(line_ending))))(i)?;
+    let (i, body) = opt(tuple((
+        trace("body", body),
+        many0(trace("footer", footer)),
+        many0(line_ending),
+    )))(i)?;
     let (body, footers) = body
         .map(|(body, footers, _)| (Some(body), footers))
         .unwrap_or_else(|| (None, Default::default()));
@@ -120,10 +124,13 @@ fn summary<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>
     context(
         SUMMARY,
         tuple((
-            type_,
-            opt(delimited(char('('), cut(scope), char(')'))),
+            trace("type", type_),
+            opt(delimited(char('('), cut(trace("scope", scope)), char(')'))),
             opt(exclamation_mark),
-            preceded(tuple((tag(":"), whitespace)), context(DESCRIPTION, text)),
+            preceded(
+                tuple((tag(":"), whitespace)),
+                context(DESCRIPTION, trace("description", text)),
+            ),
         )),
     )(i)
 }
@@ -228,6 +235,38 @@ fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fm
 }
 
 pub(crate) const BREAKER: &str = "exclamation_mark";
+
+#[cfg(feature = "unstable-trace")]
+pub(crate) fn trace<I: std::fmt::Debug, O: std::fmt::Debug, E: std::fmt::Debug>(
+    context: impl std::fmt::Display,
+    mut parser: impl nom::Parser<I, O, E>,
+) -> impl FnMut(I) -> IResult<I, O, E> {
+    static DEPTH: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    move |input: I| {
+        let depth = DEPTH.fetch_add(1, std::sync::atomic::Ordering::SeqCst) * 2;
+        eprintln!("{:depth$}--> {} {:?}", "", context, input);
+        match parser.parse(input) {
+            Ok((i, o)) => {
+                DEPTH.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                eprintln!("{:depth$}<-- {} {:?}", "", context, i);
+                Ok((i, o))
+            }
+            Err(err) => {
+                DEPTH.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                eprintln!("{:depth$}<-- {} {:?}", "", context, err);
+                Err(err)
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "unstable-trace"))]
+pub(crate) fn trace<I: std::fmt::Debug, O: std::fmt::Debug, E: std::fmt::Debug>(
+    _context: impl std::fmt::Display,
+    mut parser: impl nom::Parser<I, O, E>,
+) -> impl FnMut(I) -> IResult<I, O, E> {
+    move |input: I| parser.parse(input)
+}
 
 #[cfg(test)]
 #[allow(clippy::non_ascii_literal)]

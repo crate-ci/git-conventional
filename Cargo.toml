@@ -28,6 +28,9 @@ pre-release-replacements = [
   {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/crate-ci/git-conventional/compare/{{tag_name}}...HEAD", exactly=1},
 ]
 
+[features]
+unstable-trace = []
+
 [dependencies]
 nom = "7"
 unicase = "2.5"
