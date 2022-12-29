@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Fixes
+
+- Ensure footers value isn't confused with another footer
+
 ## [0.12.0] - 2022-07-18
 
 ### Fixes
