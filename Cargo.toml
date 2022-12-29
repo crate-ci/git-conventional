@@ -11,6 +11,7 @@ readme = "README.md"
 categories = ["parser-implementations"]
 keywords = ["parser", "git", "conventional-commit", "commit", "conventional"]
 edition = "2018"
+rust-version = "1.60.0"  # MSRV
 include = [
   "src/**/*",
   "Cargo.toml",
@@ -27,6 +28,9 @@ pre-release-replacements = [
   {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## [Unreleased] - ReleaseDate\n", exactly=1},
   {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/crate-ci/git-conventional/compare/{{tag_name}}...HEAD", exactly=1},
 ]
+
+[features]
+unstable-trace = []
 
 [dependencies]
 nom = "7"

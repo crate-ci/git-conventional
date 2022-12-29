@@ -3,9 +3,10 @@ use std::str;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
 use nom::character::complete::{char, line_ending};
-use nom::combinator::{cut, eof, map, opt, peek};
+use nom::combinator::{cut, eof, fail, map, opt, peek};
 use nom::error::{context, ContextError, ErrorKind, ParseError};
 use nom::multi::many0;
+use nom::multi::many0_count;
 use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 use nom::Parser;
@@ -22,7 +23,7 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, nom::Err<E>> {
-    let (_i, c) = message(i)?;
+    let (_i, c) = trace("message", message)(i)?;
     debug_assert!(_i.is_empty(), "{:?} remaining", _i);
     Ok(c)
 }
@@ -65,7 +66,7 @@ fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Deb
 pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> IResult<&'a str, CommitDetails<'a>, E> {
-    let (i, summary) = terminated(summary, alt((line_ending, eof)))(i)?;
+    let (i, summary) = terminated(trace("summary", summary), alt((line_ending, eof)))(i)?;
     let (type_, scope, breaking, description) = summary;
 
     // The body MUST begin one blank line after the description.
@@ -73,10 +74,11 @@ pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::
 
     let (i, _extra) = many0(line_ending)(i)?;
 
-    let (i, body) = opt(tuple((body, many0(footer), many0(line_ending))))(i)?;
-    let (body, footers) = body
-        .map(|(body, footers, _)| (Some(body), footers))
-        .unwrap_or_else(|| (None, Default::default()));
+    let (i, body) = opt(trace("body", body))(i)?;
+
+    let (i, footers) = many0(trace("footer", footer))(i)?;
+
+    let (i, _) = many0_count(line_ending)(i)?;
 
     Ok((
         i,
@@ -120,10 +122,13 @@ fn summary<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>
     context(
         SUMMARY,
         tuple((
-            type_,
-            opt(delimited(char('('), cut(scope), char(')'))),
+            trace("type", type_),
+            opt(delimited(char('('), cut(trace("scope", scope)), char(')'))),
             opt(exclamation_mark),
-            preceded(tuple((tag(":"), whitespace)), context(DESCRIPTION, text)),
+            preceded(
+                tuple((tag(":"), whitespace)),
+                context(DESCRIPTION, trace("description", text)),
+            ),
         )),
     )(i)
 }
@@ -147,7 +152,22 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
         return Err(nom::Err::Error(err));
     }
 
-    take_until_first_footer(i)
+    let mut offset = 0;
+    let mut prior_is_empty = true;
+    for line in crate::lines::LinesWithTerminator::new(i) {
+        if prior_is_empty && peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok()
+        {
+            break;
+        }
+        prior_is_empty = line.trim().is_empty();
+
+        offset += line.chars().count();
+    }
+    if offset == 0 {
+        fail::<_, (), _>(i)?;
+    }
+
+    map(take(offset), str::trim_end)(i)
 }
 
 pub(crate) const BODY: &str = "body";
@@ -185,33 +205,9 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fm
         return Err(nom::Err::Failure(err));
     }
 
-    take_until_next_footer(i)
-}
-
-fn take_until_first_footer<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
     let mut offset = 0;
-    let mut prior_is_empty = true;
-    for line in crate::lines::LinesWithTerminator::new(i) {
-        if prior_is_empty && peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok()
-        {
-            break;
-        }
-        prior_is_empty = line.trim().is_empty();
-
-        offset += line.chars().count();
-    }
-
-    map(take(offset), str::trim_end)(i)
-}
-
-fn take_until_next_footer<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    let mut offset = 0;
-    for line in crate::lines::LinesWithTerminator::new(i) {
-        if peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok() {
+    for (i, line) in crate::lines::LinesWithTerminator::new(i).enumerate() {
+        if 0 < i && peek::<_, _, E, _>(tuple((token, separator)))(line.trim_end()).is_ok() {
             break;
         }
 
@@ -228,6 +224,38 @@ fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fm
 }
 
 pub(crate) const BREAKER: &str = "exclamation_mark";
+
+#[cfg(feature = "unstable-trace")]
+pub(crate) fn trace<I: std::fmt::Debug, O: std::fmt::Debug, E: std::fmt::Debug>(
+    context: impl std::fmt::Display,
+    mut parser: impl nom::Parser<I, O, E>,
+) -> impl FnMut(I) -> IResult<I, O, E> {
+    static DEPTH: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    move |input: I| {
+        let depth = DEPTH.fetch_add(1, std::sync::atomic::Ordering::SeqCst) * 2;
+        eprintln!("{:depth$}--> {} {:?}", "", context, input);
+        match parser.parse(input) {
+            Ok((i, o)) => {
+                DEPTH.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                eprintln!("{:depth$}<-- {} {:?}", "", context, i);
+                Ok((i, o))
+            }
+            Err(err) => {
+                DEPTH.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                eprintln!("{:depth$}<-- {} {:?}", "", context, err);
+                Err(err)
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "unstable-trace"))]
+pub(crate) fn trace<I: std::fmt::Debug, O: std::fmt::Debug, E: std::fmt::Debug>(
+    _context: impl std::fmt::Display,
+    mut parser: impl nom::Parser<I, O, E>,
+) -> impl FnMut(I) -> IResult<I, O, E> {
+    move |input: I| parser.parse(input)
+}
 
 #[cfg(test)]
 #[allow(clippy::non_ascii_literal)]
