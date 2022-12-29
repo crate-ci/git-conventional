@@ -481,6 +481,26 @@ mod test {
     }
 
     #[test]
+    fn test_conjoined_footer() {
+        let commit = Commit::parse(
+            "fix(example): fix keepachangelog config example
+
+Fixes: #123, #124, #125",
+        )
+        .unwrap();
+        assert_eq!(Type::FIX, commit.type_());
+        assert_eq!(commit.body(), None);
+        assert_eq!(
+            commit.footers(),
+            [Footer::new(
+                FooterToken("Fixes".into()),
+                FooterSeparator::Value,
+                "#123, #124, #125"
+            ),]
+        );
+    }
+
+    #[test]
     fn test_windows_line_endings() {
         let commit =
             Commit::parse("feat: thing\r\n\r\nbody\r\n\r\ncloses #1234\r\n\r\n\r\nBREAKING CHANGE: something broke\r\n\r\n")
