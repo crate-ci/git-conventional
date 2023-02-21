@@ -20,14 +20,17 @@ impl Error {
         }
     }
 
-    pub(crate) fn with_nom(commit: &str, err: nom::Err<nom::error::VerboseError<&str>>) -> Self {
-        use nom::error::VerboseErrorKind::*;
+    pub(crate) fn with_nom(
+        commit: &str,
+        err: winnow::Err<winnow::error::VerboseError<&str>>,
+    ) -> Self {
+        use winnow::error::VerboseErrorKind::*;
         use ErrorKind::*;
 
         let mut kind = InvalidFormat;
         match err {
-            nom::Err::Incomplete(_) => unreachable!(),
-            nom::Err::Error(err) | nom::Err::Failure(err) => {
+            winnow::Err::Incomplete(_) => unreachable!(),
+            winnow::Err::Backtrack(err) | winnow::Err::Cut(err) => {
                 for (_input, context) in &err.errors {
                     kind = match context {
                         Context(string) => match *string {

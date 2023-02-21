@@ -1,15 +1,15 @@
 use std::str;
 
-use nom::branch::alt;
-use nom::bytes::complete::{tag, take, take_till1, take_while, take_while1};
-use nom::character::complete::{char, line_ending};
-use nom::combinator::{cut, eof, fail, map, opt, peek};
-use nom::error::{context, ContextError, ErrorKind, ParseError};
-use nom::multi::many0;
-use nom::multi::many0_count;
-use nom::sequence::{delimited, preceded, terminated, tuple};
-use nom::IResult;
-use nom::Parser;
+use winnow::branch::alt;
+use winnow::bytes::complete::{tag, take, take_till1, take_while, take_while1};
+use winnow::character::complete::{char, line_ending};
+use winnow::combinator::{cut, eof, fail, map, opt, peek};
+use winnow::error::{context, ContextError, ErrorKind, ParseError};
+use winnow::multi::many0;
+use winnow::multi::many0_count;
+use winnow::sequence::{delimited, preceded, terminated, tuple};
+use winnow::IResult;
+use winnow::Parser;
 
 type CommitDetails<'a> = (
     &'a str,
@@ -22,7 +22,7 @@ type CommitDetails<'a> = (
 
 pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
-) -> Result<CommitDetails<'a>, nom::Err<E>> {
+) -> Result<CommitDetails<'a>, winnow::Err<E>> {
     let (_i, c) = trace("message", message)(i)?;
     debug_assert!(_i.is_empty(), "{:?} remaining", _i);
     Ok(c)
@@ -72,7 +72,7 @@ pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::
     // The body MUST begin one blank line after the description.
     let (i, _) = context(BODY, alt((line_ending, eof)))(i)?;
 
-    let (i, _extra) = many0(line_ending)(i)?;
+    let (i, _extra): (_, ()) = many0(line_ending)(i)?;
 
     let (i, body) = opt(trace("body", body))(i)?;
 
@@ -148,8 +148,8 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
 ) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
-        let err = E::add_context(i, BODY, err);
-        return Err(nom::Err::Error(err));
+        let err = err.add_context(i, BODY);
+        return Err(winnow::Err::Backtrack(err));
     }
 
     let mut offset = 0;
@@ -201,8 +201,8 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fm
 ) -> IResult<&'a str, &'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
-        let err = E::add_context(i, "value", err);
-        return Err(nom::Err::Failure(err));
+        let err = err.add_context(i, "value");
+        return Err(winnow::Err::Cut(err));
     }
 
     let mut offset = 0;
@@ -228,7 +228,7 @@ pub(crate) const BREAKER: &str = "exclamation_mark";
 #[cfg(feature = "unstable-trace")]
 pub(crate) fn trace<I: std::fmt::Debug, O: std::fmt::Debug, E: std::fmt::Debug>(
     context: impl std::fmt::Display,
-    mut parser: impl nom::Parser<I, O, E>,
+    mut parser: impl winnow::Parser<I, O, E>,
 ) -> impl FnMut(I) -> IResult<I, O, E> {
     static DEPTH: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     move |input: I| {
@@ -252,7 +252,7 @@ pub(crate) fn trace<I: std::fmt::Debug, O: std::fmt::Debug, E: std::fmt::Debug>(
 #[cfg(not(feature = "unstable-trace"))]
 pub(crate) fn trace<I: std::fmt::Debug, O: std::fmt::Debug, E: std::fmt::Debug>(
     _context: impl std::fmt::Display,
-    mut parser: impl nom::Parser<I, O, E>,
+    mut parser: impl winnow::Parser<I, O, E>,
 ) -> impl FnMut(I) -> IResult<I, O, E> {
     move |input: I| parser.parse(input)
 }
@@ -261,7 +261,7 @@ pub(crate) fn trace<I: std::fmt::Debug, O: std::fmt::Debug, E: std::fmt::Debug>(
 #[allow(clippy::non_ascii_literal)]
 mod tests {
     use super::*;
-    use nom::error::{convert_error, VerboseError};
+    use winnow::error::{convert_error, VerboseError};
 
     #[allow(clippy::wildcard_enum_match_arm, clippy::print_stdout)]
     fn test<'a, F, O>(f: F, i: &'a str) -> IResult<&'a str, O, VerboseError<&'a str>>
@@ -269,9 +269,9 @@ mod tests {
         F: Fn(&'a str) -> IResult<&'a str, O, VerboseError<&'a str>>,
     {
         f(i).map_err(|err| match err {
-            nom::Err::Error(err) | nom::Err::Failure(err) => {
+            winnow::Err::Backtrack(err) | winnow::Err::Cut(err) => {
                 println!("{}", convert_error(i, err.clone()));
-                nom::Err::Error(err)
+                winnow::Err::Backtrack(err)
             }
             _ => unreachable!(),
         })
