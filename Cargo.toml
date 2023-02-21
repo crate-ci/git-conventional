@@ -30,7 +30,6 @@ pre-release-replacements = [
 ]
 
 [features]
-unstable-trace = []
 
 [dependencies]
 winnow = "0.3.0"
