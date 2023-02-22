@@ -4,7 +4,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
 
-use nom::error::VerboseError;
+use winnow::error::VerboseError;
 
 use crate::parser::parse;
 use crate::{Error, ErrorKind};

@@ -2,6 +2,8 @@
 
 use std::fmt;
 
+use winnow::error::ErrMode;
+
 /// The error returned when parsing a commit fails.
 pub struct Error {
     kind: ErrorKind,
@@ -20,14 +22,14 @@ impl Error {
         }
     }
 
-    pub(crate) fn with_nom(commit: &str, err: nom::Err<nom::error::VerboseError<&str>>) -> Self {
-        use nom::error::VerboseErrorKind::*;
+    pub(crate) fn with_nom(commit: &str, err: ErrMode<winnow::error::VerboseError<&str>>) -> Self {
+        use winnow::error::VerboseErrorKind::*;
         use ErrorKind::*;
 
         let mut kind = InvalidFormat;
         match err {
-            nom::Err::Incomplete(_) => unreachable!(),
-            nom::Err::Error(err) | nom::Err::Failure(err) => {
+            ErrMode::Incomplete(_) => unreachable!(),
+            ErrMode::Backtrack(err) | ErrMode::Cut(err) => {
                 for (_input, context) in &err.errors {
                     kind = match context {
                         Context(string) => match *string {
