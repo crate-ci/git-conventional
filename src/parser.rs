@@ -23,7 +23,7 @@ type CommitDetails<'a> = (
 pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> Result<CommitDetails<'a>, ErrMode<E>> {
-    let (_i, c) = trace("message", message)(i)?;
+    let (_i, c) = trace("message", message).parse_next(i)?;
     debug_assert!(_i.is_empty(), "{:?} remaining", _i);
     Ok(c)
 }
@@ -57,7 +57,7 @@ fn is_whitespace(c: char) -> bool {
 fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-    take_while0(is_whitespace)(i)
+    take_while0(is_whitespace).parse_next(i)
 }
 
 // <message>         ::= <summary>, <newline>+, <body>, (<newline>+, <footer>)*
@@ -66,19 +66,20 @@ fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Deb
 pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> IResult<&'a str, CommitDetails<'a>, E> {
-    let (i, summary) = terminated(trace("summary", summary), alt((line_ending, eof)))(i)?;
+    let (i, summary) =
+        terminated(trace("summary", summary), alt((line_ending, eof))).parse_next(i)?;
     let (type_, scope, breaking, description) = summary;
 
     // The body MUST begin one blank line after the description.
     let (i, _) = alt((line_ending, eof)).context(BODY).parse_next(i)?;
 
-    let (i, _extra): (_, ()) = many0(line_ending)(i)?;
+    let (i, _extra): (_, ()) = many0(line_ending).parse_next(i)?;
 
-    let (i, body) = opt(trace("body", body))(i)?;
+    let (i, body) = opt(trace("body", body)).parse_next(i)?;
 
-    let (i, footers) = many0(trace("footer", footer))(i)?;
+    let (i, footers) = many0(trace("footer", footer)).parse_next(i)?;
 
-    let (i, _): (_, ()) = many0(line_ending)(i)?;
+    let (i, _): (_, ()) = many0(line_ending).parse_next(i)?;
 
     Ok((
         i,
@@ -137,7 +138,7 @@ pub(crate) const DESCRIPTION: &str = "description";
 fn text<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-    take_till1(is_line_ending)(i)
+    take_till1(is_line_ending).parse_next(i)
 }
 
 fn body<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
@@ -152,7 +153,11 @@ fn body<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     let mut offset = 0;
     let mut prior_is_empty = true;
     for line in crate::lines::LinesWithTerminator::new(i) {
-        if prior_is_empty && peek::<_, _, E, _>((token, separator))(line.trim_end()).is_ok() {
+        if prior_is_empty
+            && peek::<_, _, E, _>((token, separator))
+                .parse_next(line.trim_end())
+                .is_ok()
+        {
             break;
         }
         prior_is_empty = line.trim().is_empty();
@@ -182,14 +187,14 @@ fn footer<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
 pub(crate) fn token<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-    alt((tag("BREAKING CHANGE"), type_))(i)
+    alt(("BREAKING CHANGE", type_)).parse_next(i)
 }
 
 // <separator>       ::= ":" | " #"
 fn separator<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
     i: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
-    alt((tag(":"), tag(" #")))(i)
+    alt((":", " #")).parse_next(i)
 }
 
 pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
@@ -203,7 +208,11 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fm
 
     let mut offset = 0;
     for (i, line) in crate::lines::LinesWithTerminator::new(i).enumerate() {
-        if 0 < i && peek::<_, _, E, _>((token, separator))(line.trim_end()).is_ok() {
+        if 0 < i
+            && peek::<_, _, E, _>((token, separator))
+                .parse_next(line.trim_end())
+                .is_ok()
+        {
             break;
         }
 
