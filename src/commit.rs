@@ -14,7 +14,7 @@ const BREAKING_ARROW: &str = "BREAKING-CHANGE";
 
 /// A conventional commit.
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Commit<'a> {
     ty: Type<'a>,
     scope: Option<Scope<'a>>,
@@ -40,9 +40,9 @@ impl<'a> Commit<'a> {
 
         let breaking_description = footers
             .iter()
-            .filter_map(|(k, _, v)| (k == &BREAKING_PHRASE || k == &BREAKING_ARROW).then(|| *v))
+            .filter_map(|(k, _, v)| (k == &BREAKING_PHRASE || k == &BREAKING_ARROW).then_some(*v))
             .next()
-            .or_else(|| breaking.then(|| description));
+            .or_else(|| breaking.then_some(description));
         let breaking = breaking_description.is_some();
         let footers: Result<Vec<_>, Error> = footers
             .into_iter()
@@ -461,10 +461,7 @@ mod test {
         ))
         .unwrap();
         assert_eq!(Type::FEAT, commit.type_());
-        assert_eq!(
-            "breaking change",
-            &*commit.footers().get(0).unwrap().value()
-        );
+        assert_eq!("breaking change", commit.footers().get(0).unwrap().value());
         assert!(commit.breaking());
         assert_eq!(commit.breaking_description(), Some("breaking change"));
 
@@ -475,7 +472,7 @@ mod test {
         ))
         .unwrap();
         assert_eq!(Type::FIX, commit.type_());
-        assert_eq!("it's broken", &*commit.footers().get(0).unwrap().value());
+        assert_eq!("it's broken", commit.footers().get(0).unwrap().value());
         assert!(commit.breaking());
         assert_eq!(commit.breaking_description(), Some("it's broken"));
     }
@@ -591,7 +588,7 @@ Fixes: #123, #124, #125",
             )),
             commit.body()
         );
-        assert_eq!("Just kidding!", &*commit.footers().get(0).unwrap().value());
+        assert_eq!("Just kidding!", commit.footers().get(0).unwrap().value());
     }
 
     #[test]
