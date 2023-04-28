@@ -1,12 +1,12 @@
 use std::str;
 
-use winnow::branch::alt;
-use winnow::bytes::{tag, take, take_till1, take_while0, take_while1};
-use winnow::character::line_ending;
+use winnow::ascii::line_ending;
+use winnow::combinator::alt;
+use winnow::combinator::repeat0;
 use winnow::combinator::{cut_err, eof, fail, opt, peek};
+use winnow::combinator::{delimited, preceded, terminated};
 use winnow::error::{ContextError, ErrMode, ErrorKind, ParseError};
-use winnow::multi::many0;
-use winnow::sequence::{delimited, preceded, terminated};
+use winnow::token::{tag, take, take_till1, take_while0, take_while1};
 use winnow::trace::trace;
 use winnow::IResult;
 use winnow::Parser;
@@ -73,13 +73,13 @@ pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::
     // The body MUST begin one blank line after the description.
     let (i, _) = alt((line_ending, eof)).context(BODY).parse_next(i)?;
 
-    let (i, _extra): (_, ()) = many0(line_ending).parse_next(i)?;
+    let (i, _extra): (_, ()) = repeat0(line_ending).parse_next(i)?;
 
     let (i, body) = opt(trace("body", body)).parse_next(i)?;
 
-    let (i, footers) = many0(trace("footer", footer)).parse_next(i)?;
+    let (i, footers) = repeat0(trace("footer", footer)).parse_next(i)?;
 
-    let (i, _): (_, ()) = many0(line_ending).parse_next(i)?;
+    let (i, _): (_, ()) = repeat0(line_ending).parse_next(i)?;
 
     Ok((
         i,
