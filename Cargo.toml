@@ -11,7 +11,7 @@ readme = "README.md"
 categories = ["parser-implementations"]
 keywords = ["parser", "git", "conventional-commit", "commit", "conventional"]
 edition = "2018"
-rust-version = "1.60.0"  # MSRV
+rust-version = "1.64.0"  # MSRV
 include = [
   "src/**/*",
   "Cargo.toml",
