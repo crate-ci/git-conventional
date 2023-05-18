@@ -11,22 +11,20 @@
 
 1. Add the crate to your `Cargo.toml`:
 
-   ```shell
-   cargo install cargo-edit
-
-   cargo add git_conventional
-   ```
+```console
+$ cargo add git_conventional
+```
 
 2. Parse a commit and lookup what you need
 
-   ```rust
-   let commit = git_conventional::Commit::parse("feat(conventional commit): this is it!").unwrap();
+```rust
+let commit = git_conventional::Commit::parse("feat(conventional commit): this is it!").unwrap();
 
-   assert_eq!(commit.type_(), git_conventional::Type::FEAT);
-   assert_eq!(commit.scope().unwrap(), "conventional commit");
-   assert_eq!(commit.description(), "this is it!");
-   assert_eq!(commit.body(), None);
-   ```
+assert_eq!(commit.type_(), git_conventional::Type::FEAT);
+assert_eq!(commit.scope().unwrap(), "conventional commit");
+assert_eq!(commit.description(), "this is it!");
+assert_eq!(commit.body(), None);
+```
 
 ## License
 

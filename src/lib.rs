@@ -47,6 +47,7 @@
 //! assert_eq!(commit.footers()[2].value(), "12");
 //! ```
 
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 
 mod commit;
