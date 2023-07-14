@@ -4,7 +4,8 @@ use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
 
-use winnow::error::VerboseError;
+use winnow::error::ContextError;
+use winnow::Parser;
 
 use crate::parser::parse;
 use crate::{Error, ErrorKind};
@@ -35,8 +36,9 @@ impl<'a> Commit<'a> {
     /// This function returns an error if the commit does not conform to the
     /// Conventional Commit specification.
     pub fn parse(string: &'a str) -> Result<Self, Error> {
-        let (ty, scope, breaking, description, body, footers) =
-            parse::<VerboseError<&'a str>>(string).map_err(|err| Error::with_nom(string, err))?;
+        let (ty, scope, breaking, description, body, footers) = parse::<ContextError>
+            .parse(string)
+            .map_err(|err| Error::with_nom(string, err))?;
 
         let breaking_description = footers
             .iter()
@@ -296,10 +298,9 @@ unicase_components![Type, Scope, FooterToken];
 impl<'a> Type<'a> {
     /// Parse a `str` into a `Type`.
     pub fn parse(sep: &'a str) -> Result<Self, Error> {
-        let (i, t) = crate::parser::type_(sep).map_err(|err| Error::with_nom(sep, err))?;
-        if !i.is_empty() {
-            return Err(Error::new(ErrorKind::InvalidFormat));
-        }
+        let t = crate::parser::type_::<ContextError>
+            .parse(sep)
+            .map_err(|err| Error::with_nom(sep, err))?;
         Ok(Type::new_unchecked(t))
     }
 }
@@ -329,10 +330,9 @@ impl Type<'static> {
 impl<'a> Scope<'a> {
     /// Parse a `str` into a `Scope`.
     pub fn parse(sep: &'a str) -> Result<Self, Error> {
-        let (i, t) = crate::parser::scope(sep).map_err(|err| Error::with_nom(sep, err))?;
-        if !i.is_empty() {
-            return Err(Error::new(ErrorKind::InvalidScope));
-        }
+        let t = crate::parser::scope::<ContextError>
+            .parse(sep)
+            .map_err(|err| Error::with_nom(sep, err))?;
         Ok(Scope::new_unchecked(t))
     }
 }
@@ -340,10 +340,9 @@ impl<'a> Scope<'a> {
 impl<'a> FooterToken<'a> {
     /// Parse a `str` into a `FooterToken`.
     pub fn parse(sep: &'a str) -> Result<Self, Error> {
-        let (i, t) = crate::parser::token(sep).map_err(|err| Error::with_nom(sep, err))?;
-        if !i.is_empty() {
-            return Err(Error::new(ErrorKind::InvalidScope));
-        }
+        let t = crate::parser::token::<ContextError>
+            .parse(sep)
+            .map_err(|err| Error::with_nom(sep, err))?;
         Ok(FooterToken::new_unchecked(t))
     }
 

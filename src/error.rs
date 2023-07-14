@@ -2,8 +2,6 @@
 
 use std::fmt;
 
-use winnow::error::ErrMode;
-
 /// The error returned when parsing a commit fails.
 pub struct Error {
     kind: ErrorKind,
@@ -22,28 +20,26 @@ impl Error {
         }
     }
 
-    pub(crate) fn with_nom(commit: &str, err: ErrMode<winnow::error::VerboseError<&str>>) -> Self {
-        use winnow::error::VerboseErrorKind::*;
+    pub(crate) fn with_nom(
+        commit: &str,
+        err: winnow::error::ParseError<&str, winnow::error::ContextError>,
+    ) -> Self {
+        use winnow::error::StrContext;
         use ErrorKind::*;
 
         let mut kind = InvalidFormat;
-        match err {
-            ErrMode::Incomplete(_) => unreachable!(),
-            ErrMode::Backtrack(err) | ErrMode::Cut(err) => {
-                for (_input, context) in &err.errors {
-                    kind = match context {
-                        Context(string) => match *string {
-                            crate::parser::SUMMARY => MissingType,
-                            crate::parser::TYPE => MissingType,
-                            crate::parser::SCOPE => InvalidScope,
-                            crate::parser::DESCRIPTION => MissingDescription,
-                            crate::parser::BODY => InvalidBody,
-                            _ => kind,
-                        },
-                        _ => kind,
-                    };
-                }
-            }
+        for context in err.inner().context() {
+            kind = match context {
+                StrContext::Label(string) => match *string {
+                    crate::parser::SUMMARY => MissingType,
+                    crate::parser::TYPE => MissingType,
+                    crate::parser::SCOPE => InvalidScope,
+                    crate::parser::DESCRIPTION => MissingDescription,
+                    crate::parser::BODY => InvalidBody,
+                    _ => kind,
+                },
+                _ => kind,
+            };
         }
 
         Self {
