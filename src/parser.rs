@@ -1,15 +1,16 @@
+#![allow(clippy::let_unit_value)] // for clarify and to ensure the right type is selected
+
 use std::str;
 
 use winnow::ascii::line_ending;
 use winnow::combinator::alt;
-use winnow::combinator::repeat0;
+use winnow::combinator::repeat;
 use winnow::combinator::{cut_err, eof, fail, opt, peek};
 use winnow::combinator::{delimited, preceded, terminated};
-use winnow::error::{ContextError, ErrMode, ErrorKind, ParseError};
-use winnow::token::{tag, take, take_till1, take_while0, take_while1};
+use winnow::error::{AddContext, ErrMode, ErrorKind, ParserError, StrContext};
+use winnow::prelude::*;
+use winnow::token::{tag, take, take_till1, take_while};
 use winnow::trace::trace;
-use winnow::IResult;
-use winnow::Parser;
 
 type CommitDetails<'a> = (
     &'a str,
@@ -20,12 +21,13 @@ type CommitDetails<'a> = (
     Vec<(&'a str, &'a str, &'a str)>,
 );
 
-pub(crate) fn parse<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> Result<CommitDetails<'a>, ErrMode<E>> {
-    let (_i, c) = trace("message", message).parse_next(i)?;
-    debug_assert!(_i.is_empty(), "{:?} remaining", _i);
-    Ok(c)
+pub(crate) fn parse<
+    'a,
+    E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
+>(
+    i: &mut &'a str,
+) -> PResult<CommitDetails<'a>, E> {
+    message.parse_next(i)
 }
 
 // <CR>              ::= "0x000D"
@@ -54,59 +56,76 @@ fn is_whitespace(c: char) -> bool {
     c.is_whitespace()
 }
 
-fn whitespace<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    take_while0(is_whitespace).parse_next(i)
+fn whitespace<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
+    take_while(0.., is_whitespace).parse_next(i)
 }
 
 // <message>         ::= <summary>, <newline>+, <body>, (<newline>+, <footer>)*
 //                    |  <summary>, (<newline>+, <footer>)*
 //                    |  <summary>, <newline>*
-pub(crate) fn message<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, CommitDetails<'a>, E> {
-    let (i, summary) =
-        terminated(trace("summary", summary), alt((line_ending, eof))).parse_next(i)?;
-    let (type_, scope, breaking, description) = summary;
+pub(crate) fn message<
+    'a,
+    E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
+>(
+    i: &mut &'a str,
+) -> PResult<CommitDetails<'a>, E> {
+    trace("message", move |i: &mut &'a str| {
+        let summary =
+            terminated(trace("summary", summary), alt((line_ending, eof))).parse_next(i)?;
+        let (type_, scope, breaking, description) = summary;
 
-    // The body MUST begin one blank line after the description.
-    let (i, _) = alt((line_ending, eof)).context(BODY).parse_next(i)?;
+        // The body MUST begin one blank line after the description.
+        let _ = alt((line_ending, eof))
+            .context(StrContext::Label(BODY))
+            .parse_next(i)?;
 
-    let (i, _extra): (_, ()) = repeat0(line_ending).parse_next(i)?;
+        let _extra: () = repeat(0.., line_ending).parse_next(i)?;
 
-    let (i, body) = opt(trace("body", body)).parse_next(i)?;
+        let body = opt(body).parse_next(i)?;
 
-    let (i, footers) = repeat0(trace("footer", footer)).parse_next(i)?;
+        let footers = repeat(0.., footer).parse_next(i)?;
 
-    let (i, _): (_, ()) = repeat0(line_ending).parse_next(i)?;
+        let _: () = repeat(0.., line_ending).parse_next(i)?;
 
-    Ok((
-        i,
-        (type_, scope, breaking.is_some(), description, body, footers),
-    ))
+        Ok((type_, scope, breaking.is_some(), description, body, footers))
+    })
+    .parse_next(i)
 }
 
 // <type>            ::= <any UTF8-octets except newline or parens or ":" or "!:" or whitespace>+
-pub(crate) fn type_<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    take_while1(|c: char| {
-        !is_line_ending(c) && !is_parens(c) && c != ':' && c != '!' && !is_whitespace(c)
-    })
-    .context(TYPE)
+pub(crate) fn type_<
+    'a,
+    E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
+>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
+    trace(
+        "type",
+        take_while(1.., |c: char| {
+            !is_line_ending(c) && !is_parens(c) && c != ':' && c != '!' && !is_whitespace(c)
+        })
+        .context(StrContext::Label(TYPE)),
+    )
     .parse_next(i)
 }
 
 pub(crate) const TYPE: &str = "type";
 
 // <scope>           ::= <any UTF8-octets except newline or parens>+
-pub(crate) fn scope<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    take_while1(|c: char| !is_line_ending(c) && !is_parens(c))
-        .context(SCOPE)
-        .parse_next(i)
+pub(crate) fn scope<
+    'a,
+    E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
+>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
+    trace(
+        "scope",
+        take_while(1.., |c: char| !is_line_ending(c) && !is_parens(c))
+            .context(StrContext::Label(SCOPE)),
+    )
+    .parse_next(i)
 }
 
 pub(crate) const SCOPE: &str = "scope";
@@ -115,94 +134,108 @@ pub(crate) const SCOPE: &str = "scope";
 // <summary>         ::= <type>, "(", <scope>, ")", ["!"], ":", <whitespace>*, <text>
 //                    |  <type>, ["!"], ":", <whitespace>*, <text>
 #[allow(clippy::type_complexity)]
-fn summary<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, (&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
-    (
-        trace("type", type_),
-        opt(delimited('(', cut_err(trace("scope", scope)), ')')),
-        opt(exclamation_mark),
-        preceded(
-            (tag(":"), whitespace),
-            trace("description", text).context(DESCRIPTION),
+fn summary<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
+    i: &mut &'a str,
+) -> PResult<(&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
+    trace(
+        "summary",
+        (
+            type_,
+            opt(delimited('(', cut_err(scope), ')')),
+            opt(exclamation_mark),
+            preceded(
+                (tag(":"), whitespace),
+                text.context(StrContext::Label(DESCRIPTION)),
+            ),
         ),
     )
-        .context(SUMMARY)
-        .parse_next(i)
+    .context(StrContext::Label(SUMMARY))
+    .parse_next(i)
 }
 
 pub(crate) const SUMMARY: &str = "SUMMARY";
 pub(crate) const DESCRIPTION: &str = "description";
 
 // <text>            ::= <any UTF8-octets except newline>*
-fn text<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    take_till1(is_line_ending).parse_next(i)
+fn text<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
+    trace("text", take_till1(is_line_ending)).parse_next(i)
 }
 
-fn body<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    if i.is_empty() {
-        let err = E::from_error_kind(i, ErrorKind::Eof);
-        let err = err.add_context(i, BODY);
-        return Err(ErrMode::Backtrack(err));
-    }
-
-    let mut offset = 0;
-    let mut prior_is_empty = true;
-    for line in crate::lines::LinesWithTerminator::new(i) {
-        if prior_is_empty
-            && peek::<_, _, E, _>((token, separator))
-                .parse_next(line.trim_end())
-                .is_ok()
-        {
-            break;
+fn body<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
+    trace("body", move |i: &mut &'a str| {
+        if i.is_empty() {
+            let err = E::from_error_kind(i, ErrorKind::Eof);
+            let err = err.add_context(i, StrContext::Label(BODY));
+            return Err(ErrMode::Backtrack(err));
         }
-        prior_is_empty = line.trim().is_empty();
 
-        offset += line.chars().count();
-    }
-    if offset == 0 {
-        fail::<_, (), _>(i)?;
-    }
+        let mut offset = 0;
+        let mut prior_is_empty = true;
+        for line in crate::lines::LinesWithTerminator::new(i) {
+            if prior_is_empty
+                && peek::<_, _, E, _>((token, separator))
+                    .parse_peek(line.trim_end())
+                    .is_ok()
+            {
+                break;
+            }
+            prior_is_empty = line.trim().is_empty();
 
-    take(offset).map(str::trim_end).parse_next(i)
+            offset += line.chars().count();
+        }
+        if offset == 0 {
+            fail::<_, (), _>(i)?;
+        }
+
+        take(offset).map(str::trim_end).parse_next(i)
+    })
+    .parse_next(i)
 }
 
 pub(crate) const BODY: &str = "body";
 
 // <footer>          ::= <token>, <separator>, <whitespace>*, <value>
-fn footer<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, (&'a str, &'a str, &'a str), E> {
-    (token, separator, whitespace, value)
-        .map(|(ft, s, _, fv)| (ft, s, fv))
-        .parse_next(i)
+fn footer<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
+    i: &mut &'a str,
+) -> PResult<(&'a str, &'a str, &'a str), E> {
+    trace(
+        "footer",
+        (token, separator, whitespace, value).map(|(ft, s, _, fv)| (ft, s, fv)),
+    )
+    .parse_next(i)
 }
 
 // <token>           ::= <breaking-change>
 //                    |  <type>
-pub(crate) fn token<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    alt(("BREAKING CHANGE", type_)).parse_next(i)
+pub(crate) fn token<
+    'a,
+    E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
+>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
+    trace("token", alt(("BREAKING CHANGE", type_))).parse_next(i)
 }
 
 // <separator>       ::= ":" | " #"
-fn separator<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    alt((":", " #")).parse_next(i)
+fn separator<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
+    trace("sep", alt((":", " #"))).parse_next(i)
 }
 
-pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
+pub(crate) fn value<
+    'a,
+    E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
+>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
     if i.is_empty() {
         let err = E::from_error_kind(i, ErrorKind::Eof);
-        let err = err.add_context(i, "value");
+        let err = err.add_context(i, StrContext::Label("value"));
         return Err(ErrMode::Cut(err));
     }
 
@@ -210,7 +243,7 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fm
     for (i, line) in crate::lines::LinesWithTerminator::new(i).enumerate() {
         if 0 < i
             && peek::<_, _, E, _>((token, separator))
-                .parse_next(line.trim_end())
+                .parse_peek(line.trim_end())
                 .is_ok()
         {
             break;
@@ -222,10 +255,13 @@ pub(crate) fn value<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fm
     take(offset).map(str::trim_end).parse_next(i)
 }
 
-fn exclamation_mark<'a, E: ParseError<&'a str> + ContextError<&'a str> + std::fmt::Debug>(
-    i: &'a str,
-) -> IResult<&'a str, &'a str, E> {
-    tag("!").context(BREAKER).parse_next(i)
+fn exclamation_mark<
+    'a,
+    E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
+>(
+    i: &mut &'a str,
+) -> PResult<&'a str, E> {
+    tag("!").context(StrContext::Label(BREAKER)).parse_next(i)
 }
 
 pub(crate) const BREAKER: &str = "exclamation_mark";
@@ -234,35 +270,22 @@ pub(crate) const BREAKER: &str = "exclamation_mark";
 #[allow(clippy::non_ascii_literal)]
 mod tests {
     use super::*;
-    use winnow::error::{convert_error, VerboseError};
 
-    #[allow(clippy::wildcard_enum_match_arm, clippy::print_stdout)]
-    fn test<'a, F, O>(f: F, i: &'a str) -> IResult<&'a str, O, VerboseError<&'a str>>
-    where
-        F: Fn(&'a str) -> IResult<&'a str, O, VerboseError<&'a str>>,
-    {
-        f(i).map_err(|err| match err {
-            ErrMode::Backtrack(err) | ErrMode::Cut(err) => {
-                println!("{}", convert_error(i, err.clone()));
-                ErrMode::Backtrack(err)
-            }
-            _ => unreachable!(),
-        })
-    }
+    use winnow::error::ContextError;
 
     mod message {
         use super::*;
         #[test]
         fn errors() {
-            let p = message::<VerboseError<&str>>;
+            let mut p = message::<ContextError>;
 
             let input = "Hello World";
-            let err = test(p, input).unwrap_err();
+            let err = p.parse(input).unwrap_err();
             let err = crate::Error::with_nom(input, err);
             assert_eq!(err.to_string(), crate::ErrorKind::MissingType.to_string());
 
             let input = "fix Improved error messages\n";
-            let err = test(p, input).unwrap_err();
+            let err = p.parse(input).unwrap_err();
             let err = crate::Error::with_nom(input, err);
             assert_eq!(err.to_string(), crate::ErrorKind::MissingType.to_string());
         }
@@ -273,110 +296,113 @@ mod tests {
 
         #[test]
         fn test_type() {
-            let p = type_::<VerboseError<&str>>;
+            let mut p = type_::<ContextError>;
 
             // valid
-            assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
-            assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
-            assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
-            assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
-            assert_eq!(test(p, "foo2bar").unwrap(), ("", "foo2bar"));
-            assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
-            assert_eq!(test(p, "foo bar").unwrap(), (" bar", "foo"));
-            assert_eq!(test(p, "foo: bar").unwrap(), (": bar", "foo"));
-            assert_eq!(test(p, "foo!: bar").unwrap(), ("!: bar", "foo"));
-            assert_eq!(test(p, "foo(bar").unwrap(), ("(bar", "foo"));
-            assert_eq!(test(p, "foo ").unwrap(), (" ", "foo"));
+            assert_eq!(p.parse_peek("foo").unwrap(), ("", "foo"));
+            assert_eq!(p.parse_peek("Foo").unwrap(), ("", "Foo"));
+            assert_eq!(p.parse_peek("FOO").unwrap(), ("", "FOO"));
+            assert_eq!(p.parse_peek("fOO").unwrap(), ("", "fOO"));
+            assert_eq!(p.parse_peek("foo2bar").unwrap(), ("", "foo2bar"));
+            assert_eq!(p.parse_peek("foo-bar").unwrap(), ("", "foo-bar"));
+            assert_eq!(p.parse_peek("foo bar").unwrap(), (" bar", "foo"));
+            assert_eq!(p.parse_peek("foo: bar").unwrap(), (": bar", "foo"));
+            assert_eq!(p.parse_peek("foo!: bar").unwrap(), ("!: bar", "foo"));
+            assert_eq!(p.parse_peek("foo(bar").unwrap(), ("(bar", "foo"));
+            assert_eq!(p.parse_peek("foo ").unwrap(), (" ", "foo"));
 
             // invalid
-            assert!(test(p, "").is_err());
-            assert!(test(p, " ").is_err());
-            assert!(test(p, "  ").is_err());
-            assert!(test(p, ")").is_err());
-            assert!(test(p, " feat").is_err());
-            assert!(test(p, " feat ").is_err());
+            assert!(p.parse_peek("").is_err());
+            assert!(p.parse_peek(" ").is_err());
+            assert!(p.parse_peek("  ").is_err());
+            assert!(p.parse_peek(")").is_err());
+            assert!(p.parse_peek(" feat").is_err());
+            assert!(p.parse_peek(" feat ").is_err());
         }
 
         #[test]
         fn test_scope() {
-            let p = scope::<VerboseError<&str>>;
+            let mut p = scope::<ContextError>;
 
             // valid
-            assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
-            assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
-            assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
-            assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
-            assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
-            assert_eq!(test(p, "foo-bar").unwrap(), ("", "foo-bar"));
-            assert_eq!(test(p, "x86").unwrap(), ("", "x86"));
+            assert_eq!(p.parse_peek("foo").unwrap(), ("", "foo"));
+            assert_eq!(p.parse_peek("Foo").unwrap(), ("", "Foo"));
+            assert_eq!(p.parse_peek("FOO").unwrap(), ("", "FOO"));
+            assert_eq!(p.parse_peek("fOO").unwrap(), ("", "fOO"));
+            assert_eq!(p.parse_peek("foo bar").unwrap(), ("", "foo bar"));
+            assert_eq!(p.parse_peek("foo-bar").unwrap(), ("", "foo-bar"));
+            assert_eq!(p.parse_peek("x86").unwrap(), ("", "x86"));
 
             // invalid
-            assert!(test(p, "").is_err());
-            assert!(test(p, ")").is_err());
+            assert!(p.parse_peek("").is_err());
+            assert!(p.parse_peek(")").is_err());
         }
 
         #[test]
         fn test_text() {
-            let p = text::<VerboseError<&str>>;
+            let mut p = text::<ContextError>;
 
             // valid
-            assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
-            assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
-            assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
-            assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
-            assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
-            assert_eq!(test(p, "foo bar\n").unwrap(), ("\n", "foo bar"));
-            assert_eq!(test(p, "foo\nbar\nbaz").unwrap(), ("\nbar\nbaz", "foo"));
+            assert_eq!(p.parse_peek("foo").unwrap(), ("", "foo"));
+            assert_eq!(p.parse_peek("Foo").unwrap(), ("", "Foo"));
+            assert_eq!(p.parse_peek("FOO").unwrap(), ("", "FOO"));
+            assert_eq!(p.parse_peek("fOO").unwrap(), ("", "fOO"));
+            assert_eq!(p.parse_peek("foo bar").unwrap(), ("", "foo bar"));
+            assert_eq!(p.parse_peek("foo bar\n").unwrap(), ("\n", "foo bar"));
+            assert_eq!(
+                p.parse_peek("foo\nbar\nbaz").unwrap(),
+                ("\nbar\nbaz", "foo")
+            );
 
             // invalid
-            assert!(test(p, "").is_err());
+            assert!(p.parse_peek("").is_err());
         }
 
         #[test]
         fn test_summary() {
-            let p = summary::<VerboseError<&str>>;
+            let mut p = summary::<ContextError>;
 
             // valid
             assert_eq!(
-                test(p, "foo: bar").unwrap(),
+                p.parse_peek("foo: bar").unwrap(),
                 ("", ("foo", None, None, "bar"))
             );
             assert_eq!(
-                test(p, "foo(bar): baz").unwrap(),
+                p.parse_peek("foo(bar): baz").unwrap(),
                 ("", ("foo", Some("bar"), None, "baz"))
             );
             assert_eq!(
-                test(p, "foo(bar):     baz").unwrap(),
+                p.parse_peek("foo(bar):     baz").unwrap(),
                 ("", ("foo", Some("bar"), None, "baz"))
             );
             assert_eq!(
-                test(p, "foo(bar-baz): qux").unwrap(),
+                p.parse_peek("foo(bar-baz): qux").unwrap(),
                 ("", ("foo", Some("bar-baz"), None, "qux"))
             );
             assert_eq!(
-                test(p, "foo!: bar").unwrap(),
+                p.parse_peek("foo!: bar").unwrap(),
                 ("", ("foo", None, Some("!"), "bar"))
             );
 
             // invalid
-            assert!(test(p, "").is_err());
-            assert!(test(p, " ").is_err());
-            assert!(test(p, "  ").is_err());
-            assert!(test(p, "foo").is_err());
-            assert!(test(p, "foo bar").is_err());
-            assert!(test(p, "foo : bar").is_err());
-            assert!(test(p, "foo bar: baz").is_err());
-            assert!(test(p, "foo(: bar").is_err());
-            assert!(test(p, "foo): bar").is_err());
-            assert!(test(p, "foo(): bar").is_err());
-            assert!(test(p, "foo(bar)").is_err());
-            assert!(test(p, "foo(bar):").is_err());
-            assert!(test(p, "foo(bar): ").is_err());
-            assert!(test(p, "foo(bar):  ").is_err());
-            assert!(test(p, "foo(bar) :baz").is_err());
-            assert!(test(p, "foo(bar) : baz").is_err());
-            assert!(test(p, "foo (bar): baz").is_err());
-            assert!(test(p, "foo bar(baz): qux").is_err());
+            assert!(p.parse_peek("").is_err());
+            assert!(p.parse_peek(" ").is_err());
+            assert!(p.parse_peek("  ").is_err());
+            assert!(p.parse_peek("foo").is_err());
+            assert!(p.parse_peek("foo bar").is_err());
+            assert!(p.parse_peek("foo : bar").is_err());
+            assert!(p.parse_peek("foo bar: baz").is_err());
+            assert!(p.parse_peek("foo(: bar").is_err());
+            assert!(p.parse_peek("foo): bar").is_err());
+            assert!(p.parse_peek("foo(): bar").is_err());
+            assert!(p.parse_peek("foo(bar)").is_err());
+            assert!(p.parse_peek("foo(bar):").is_err());
+            assert!(p.parse_peek("foo(bar): ").is_err());
+            assert!(p.parse_peek("foo(bar):  ").is_err());
+            assert!(p.parse_peek("foo(bar) :baz").is_err());
+            assert!(p.parse_peek("foo(bar) : baz").is_err());
+            assert!(p.parse_peek("foo (bar): baz").is_err());
+            assert!(p.parse_peek("foo bar(baz): qux").is_err());
         }
     }
 
@@ -385,78 +411,88 @@ mod tests {
 
         #[test]
         fn test_body() {
-            let p = body::<VerboseError<&str>>;
+            let mut p = body::<ContextError>;
 
             // valid
-            assert_eq!(test(p, "foo").unwrap(), ("", "foo"));
-            assert_eq!(test(p, "Foo").unwrap(), ("", "Foo"));
-            assert_eq!(test(p, "FOO").unwrap(), ("", "FOO"));
-            assert_eq!(test(p, "fOO").unwrap(), ("", "fOO"));
-            assert_eq!(test(p, "    code block").unwrap(), ("", "    code block"));
-            assert_eq!(test(p, "💃🏽").unwrap(), ("", "💃🏽"));
-            assert_eq!(test(p, "foo bar").unwrap(), ("", "foo bar"));
-            assert_eq!(test(p, "foo\nbar\n\nbaz").unwrap(), ("", "foo\nbar\n\nbaz"));
+            assert_eq!(p.parse_peek("foo").unwrap(), ("", "foo"));
+            assert_eq!(p.parse_peek("Foo").unwrap(), ("", "Foo"));
+            assert_eq!(p.parse_peek("FOO").unwrap(), ("", "FOO"));
+            assert_eq!(p.parse_peek("fOO").unwrap(), ("", "fOO"));
             assert_eq!(
-                test(p, "foo\n\nBREAKING CHANGE: oops!").unwrap(),
+                p.parse_peek("    code block").unwrap(),
+                ("", "    code block")
+            );
+            assert_eq!(p.parse_peek("💃🏽").unwrap(), ("", "💃🏽"));
+            assert_eq!(p.parse_peek("foo bar").unwrap(), ("", "foo bar"));
+            assert_eq!(
+                p.parse_peek("foo\nbar\n\nbaz").unwrap(),
+                ("", "foo\nbar\n\nbaz")
+            );
+            assert_eq!(
+                p.parse_peek("foo\n\nBREAKING CHANGE: oops!").unwrap(),
                 ("BREAKING CHANGE: oops!", "foo")
             );
             assert_eq!(
-                test(p, "foo\n\nBREAKING-CHANGE: bar").unwrap(),
+                p.parse_peek("foo\n\nBREAKING-CHANGE: bar").unwrap(),
                 ("BREAKING-CHANGE: bar", "foo")
             );
             assert_eq!(
-                test(p, "foo\n\nMy-Footer: bar").unwrap(),
+                p.parse_peek("foo\n\nMy-Footer: bar").unwrap(),
                 ("My-Footer: bar", "foo")
             );
             assert_eq!(
-                test(p, "foo\n\nMy-Footer #bar").unwrap(),
+                p.parse_peek("foo\n\nMy-Footer #bar").unwrap(),
                 ("My-Footer #bar", "foo")
             );
 
             // invalid
-            assert!(test(p, "").is_err());
+            assert!(p.parse_peek("").is_err());
         }
 
         #[test]
         fn test_footer() {
-            let p = footer::<VerboseError<&str>>;
+            let mut p = footer::<ContextError>;
 
             // valid
             assert_eq!(
-                test(p, "hello: world").unwrap(),
+                p.parse_peek("hello: world").unwrap(),
                 ("", ("hello", ":", "world"))
             );
             assert_eq!(
-                test(p, "BREAKING CHANGE: woops!").unwrap(),
+                p.parse_peek("BREAKING CHANGE: woops!").unwrap(),
                 ("", ("BREAKING CHANGE", ":", "woops!"))
             );
             assert_eq!(
-                test(p, "Co-Authored-By: Marge Simpson <marge@simpsons.com>").unwrap(),
+                p.parse_peek("Co-Authored-By: Marge Simpson <marge@simpsons.com>")
+                    .unwrap(),
                 (
                     "",
                     ("Co-Authored-By", ":", "Marge Simpson <marge@simpsons.com>")
                 )
             );
-            assert_eq!(test(p, "Closes #12").unwrap(), ("", ("Closes", " #", "12")));
             assert_eq!(
-                test(p, "BREAKING-CHANGE: broken").unwrap(),
+                p.parse_peek("Closes #12").unwrap(),
+                ("", ("Closes", " #", "12"))
+            );
+            assert_eq!(
+                p.parse_peek("BREAKING-CHANGE: broken").unwrap(),
                 ("", ("BREAKING-CHANGE", ":", "broken"))
             );
 
             // invalid
-            assert!(test(p, "").is_err());
-            assert!(test(p, " ").is_err());
-            assert!(test(p, "  ").is_err());
-            assert!(test(p, "foo").is_err());
-            assert!(test(p, "foo:").is_err());
-            assert!(test(p, "foo: ").is_err());
-            assert!(test(p, "foo ").is_err());
-            assert!(test(p, "foo #").is_err());
-            assert!(test(p, "BREAKING CHANGE").is_err());
-            assert!(test(p, "BREAKING CHANGE:").is_err());
-            assert!(test(p, "Foo-Bar").is_err());
-            assert!(test(p, "Foo-Bar: ").is_err());
-            assert!(test(p, "foo").is_err());
+            assert!(p.parse_peek("").is_err());
+            assert!(p.parse_peek(" ").is_err());
+            assert!(p.parse_peek("  ").is_err());
+            assert!(p.parse_peek("foo").is_err());
+            assert!(p.parse_peek("foo:").is_err());
+            assert!(p.parse_peek("foo: ").is_err());
+            assert!(p.parse_peek("foo ").is_err());
+            assert!(p.parse_peek("foo #").is_err());
+            assert!(p.parse_peek("BREAKING CHANGE").is_err());
+            assert!(p.parse_peek("BREAKING CHANGE:").is_err());
+            assert!(p.parse_peek("Foo-Bar").is_err());
+            assert!(p.parse_peek("Foo-Bar: ").is_err());
+            assert!(p.parse_peek("foo").is_err());
         }
     }
 }
