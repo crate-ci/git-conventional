@@ -40,11 +40,12 @@ impl<'a> Commit<'a> {
             .parse(string)
             .map_err(|err| Error::with_nom(string, err))?;
 
-        let breaking_description = footers
-            .iter()
-            .filter_map(|(k, _, v)| (k == &BREAKING_PHRASE || k == &BREAKING_ARROW).then_some(*v))
-            .next()
-            .or_else(|| breaking.then_some(description));
+        let breaking_description = breaking.then_some(description)
+            .or_else(|| footers
+                .iter()
+                .filter_map(|(k, _, v)| (k == &BREAKING_PHRASE || k == &BREAKING_ARROW).then_some(*v))
+                .next());
+
         let breaking = breaking_description.is_some();
         let footers: Result<Vec<_>, Error> = footers
             .into_iter()
@@ -474,6 +475,18 @@ mod test {
         assert_eq!("it's broken", commit.footers().get(0).unwrap().value());
         assert!(commit.breaking());
         assert_eq!(commit.breaking_description(), Some("it's broken"));
+
+        let commit = Commit::parse(indoc!(
+            "feat!: this is a breaking change
+
+            BREAKING-CHANGE: If ! is used, BREAKING CHANGE: MAY be omitted from
+            the footer section, and the commit description SHALL be used to describe
+            the breaking change."
+        ))
+        .unwrap();
+        assert_eq!(Type::FEAT, commit.type_());
+        assert!(commit.breaking());
+        assert_eq!(commit.breaking_description(), Some("this is a breaking change"));
     }
 
     #[test]
