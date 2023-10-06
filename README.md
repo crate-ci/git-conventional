@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/crate-ci/git-conventional/branch/master/graph/badge.svg)](https://codecov.io/gh/crate-ci/git-conventional)
 [![Documentation](https://img.shields.io/badge/docs-master-blue.svg)][Documentation]
 ![License](https://img.shields.io/crates/l/git-conventional.svg)
-[![Crates Status](https://img.shields.io/crates/v/git-conventional.svg)](https://crates.io/crates/git-conventional)
+[![Crates Status](https://img.shields.io/crates/v/git-conventional.svg)][Crates.io]
 
 > A Rust parser library for the [Conventional Commit](https://www.conventionalcommits.org) spec.
 
@@ -30,8 +30,8 @@ assert_eq!(commit.body(), None);
 
 Licensed under either of
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+* MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
 
