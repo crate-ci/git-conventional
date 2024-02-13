@@ -5,12 +5,12 @@ use std::str;
 use winnow::ascii::line_ending;
 use winnow::combinator::alt;
 use winnow::combinator::repeat;
+use winnow::combinator::trace;
 use winnow::combinator::{cut_err, eof, fail, opt, peek};
 use winnow::combinator::{delimited, preceded, terminated};
 use winnow::error::{AddContext, ErrMode, ErrorKind, ParserError, StrContext};
 use winnow::prelude::*;
-use winnow::token::{tag, take, take_till1, take_while};
-use winnow::trace::trace;
+use winnow::token::{take, take_till, take_while};
 
 type CommitDetails<'a> = (
     &'a str,
@@ -144,7 +144,7 @@ fn summary<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::
             opt(delimited('(', cut_err(scope), ')')),
             opt(exclamation_mark),
             preceded(
-                (tag(":"), whitespace),
+                (':', whitespace),
                 text.context(StrContext::Label(DESCRIPTION)),
             ),
         ),
@@ -160,7 +160,7 @@ pub(crate) const DESCRIPTION: &str = "description";
 fn text<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
 ) -> PResult<&'a str, E> {
-    trace("text", take_till1(is_line_ending)).parse_next(i)
+    trace("text", take_till(1.., is_line_ending)).parse_next(i)
 }
 
 fn body<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
@@ -261,7 +261,7 @@ fn exclamation_mark<
 >(
     i: &mut &'a str,
 ) -> PResult<&'a str, E> {
-    tag("!").context(StrContext::Label(BREAKER)).parse_next(i)
+    "!".context(StrContext::Label(BREAKER)).parse_next(i)
 }
 
 pub(crate) const BREAKER: &str = "exclamation_mark";
