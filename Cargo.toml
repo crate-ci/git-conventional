@@ -48,7 +48,7 @@ pre-release-replacements = [
 [features]
 
 [dependencies]
-winnow = "0.5.40"
+winnow = "0.6.0"
 unicase = "2.5"
 doc-comment = "0.3"
 serde = { version = "1.0", optional = true, features = ["derive"] }

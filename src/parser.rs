@@ -10,6 +10,7 @@ use winnow::combinator::{cut_err, eof, fail, opt, peek};
 use winnow::combinator::{delimited, preceded, terminated};
 use winnow::error::{AddContext, ErrMode, ErrorKind, ParserError, StrContext};
 use winnow::prelude::*;
+use winnow::stream::Stream as _;
 use winnow::token::{take, take_till, take_while};
 
 type CommitDetails<'a> = (
@@ -168,8 +169,9 @@ fn body<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt
 ) -> PResult<&'a str, E> {
     trace("body", move |i: &mut &'a str| {
         if i.is_empty() {
+            let start = i.checkpoint();
             let err = E::from_error_kind(i, ErrorKind::Eof);
-            let err = err.add_context(i, StrContext::Label(BODY));
+            let err = err.add_context(i, &start, StrContext::Label(BODY));
             return Err(ErrMode::Backtrack(err));
         }
 
@@ -234,8 +236,9 @@ pub(crate) fn value<
     i: &mut &'a str,
 ) -> PResult<&'a str, E> {
     if i.is_empty() {
+        let start = i.checkpoint();
         let err = E::from_error_kind(i, ErrorKind::Eof);
-        let err = err.add_context(i, StrContext::Label("value"));
+        let err = err.add_context(i, &start, StrContext::Label("value"));
         return Err(ErrMode::Cut(err));
     }
 
