@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## [0.12.5] - 2024-02-13
+
 ### Internal
 
 - Update dependencies
@@ -136,7 +138,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixes
 
 <!-- next-url -->
-[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v0.12.4...HEAD
+[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v0.12.5...HEAD
+[0.12.5]: https://github.com/crate-ci/git-conventional/compare/v0.12.4...v0.12.5
 [0.12.4]: https://github.com/crate-ci/git-conventional/compare/v0.12.3...v0.12.4
 [0.12.3]: https://github.com/crate-ci/git-conventional/compare/v0.12.2...v0.12.3
 [0.12.2]: https://github.com/crate-ci/git-conventional/compare/v0.12.1...v0.12.2
