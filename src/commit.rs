@@ -135,8 +135,8 @@ impl fmt::Display for Commit<'_> {
             f.write_fmt(format_args!("\n\n{}", body))?;
         }
 
-        for t in self.footers() {
-            write!(f, "\n\n{}{}{}", t.token(), t.separator(), t.value())?;
+        for footer in self.footers() {
+            write!(f, "\n\n{footer}")?;
         }
 
         Ok(())
@@ -181,6 +181,13 @@ impl<'a> Footer<'a> {
     /// A flag to signal that the footer describes a breaking change.
     pub fn breaking(&self) -> bool {
         self.token.breaking()
+    }
+}
+
+impl<'a> fmt::Display for Footer<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { token, sep, value } = self;
+        write!(f, "{token}{sep}{value}")
     }
 }
 
