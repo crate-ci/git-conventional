@@ -18,7 +18,7 @@ include = [
 
 [package]
 name = "git-conventional"
-version = "0.12.5"
+version = "0.12.6"
 description = "A parser library for the Conventional Commit specification."
 authors = ["Ed Page <eopage@gmail.com>", "Jean Mertz <helloworld@rustic.games>"]
 homepage = "https://github.com/crate-ci/git-conventional"
