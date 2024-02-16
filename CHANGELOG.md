@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Features
+
+- Implement `Display` for `Footer`
+
 ## [0.12.5] - 2024-02-13
 
 ### Internal
