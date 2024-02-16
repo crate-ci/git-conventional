@@ -222,11 +222,11 @@ pub(crate) fn token<
     trace("token", alt(("BREAKING CHANGE", type_))).parse_next(i)
 }
 
-// <separator>       ::= ":" | " #"
+// <separator>       ::= ": " | " #"
 fn separator<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
 ) -> PResult<&'a str, E> {
-    trace("sep", alt((":", " #"))).parse_next(i)
+    trace("sep", alt((": ", " #"))).parse_next(i)
 }
 
 pub(crate) fn value<
@@ -459,18 +459,18 @@ mod tests {
             // valid
             assert_eq!(
                 p.parse_peek("hello: world").unwrap(),
-                ("", ("hello", ":", "world"))
+                ("", ("hello", ": ", "world"))
             );
             assert_eq!(
                 p.parse_peek("BREAKING CHANGE: woops!").unwrap(),
-                ("", ("BREAKING CHANGE", ":", "woops!"))
+                ("", ("BREAKING CHANGE", ": ", "woops!"))
             );
             assert_eq!(
                 p.parse_peek("Co-Authored-By: Marge Simpson <marge@simpsons.com>")
                     .unwrap(),
                 (
                     "",
-                    ("Co-Authored-By", ":", "Marge Simpson <marge@simpsons.com>")
+                    ("Co-Authored-By", ": ", "Marge Simpson <marge@simpsons.com>")
                 )
             );
             assert_eq!(
@@ -479,7 +479,7 @@ mod tests {
             );
             assert_eq!(
                 p.parse_peek("BREAKING-CHANGE: broken").unwrap(),
-                ("", ("BREAKING-CHANGE", ":", "broken"))
+                ("", ("BREAKING-CHANGE", ": ", "broken"))
             );
 
             // invalid

@@ -189,7 +189,7 @@ impl<'a> Footer<'a> {
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum FooterSeparator {
-    /// ":"
+    /// ": "
     Value,
 
     /// " #"
@@ -200,7 +200,7 @@ impl FooterSeparator {
     /// Access `str` representation of FooterSeparator
     pub fn as_str(self) -> &'static str {
         match self {
-            FooterSeparator::Value => ":",
+            FooterSeparator::Value => ": ",
             FooterSeparator::Ref => " #",
         }
     }
@@ -231,7 +231,7 @@ impl FromStr for FooterSeparator {
 
     fn from_str(sep: &str) -> Result<Self, Self::Err> {
         match sep {
-            ":" => Ok(FooterSeparator::Value),
+            ": " => Ok(FooterSeparator::Value),
             " #" => Ok(FooterSeparator::Ref),
             _ => {
                 Err(Error::new(ErrorKind::InvalidFooter)
@@ -625,5 +625,21 @@ Fixes: #123, #124, #125",
                 Token::StructEnd,
             ],
         );
+    }
+
+    #[test]
+    fn footer_with_value_sep_requires_space_after_colon() {
+        let commit = indoc! {"
+            fix: something something
+
+            First line of the body
+
+            Invalid-footer:space required
+
+            Valid #footer
+        "};
+
+        let commit = Commit::parse(commit).unwrap();
+        assert_eq!(1, commit.footers.len());
     }
 }
