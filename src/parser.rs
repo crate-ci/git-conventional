@@ -9,7 +9,7 @@ use winnow::combinator::trace;
 use winnow::combinator::{cut_err, eof, fail, opt, peek};
 use winnow::combinator::{delimited, preceded, terminated};
 use winnow::error::{AddContext, ErrMode, ErrorKind, ParserError, StrContext};
-use winnow::prelude::{PResult, Parser};
+use winnow::prelude::*;
 use winnow::stream::Stream as _;
 use winnow::token::{take, take_till, take_while};
 
