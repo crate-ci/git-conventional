@@ -42,8 +42,7 @@ impl<'a> Commit<'a> {
 
         let breaking_description = footers
             .iter()
-            .filter_map(|(k, _, v)| (k == &BREAKING_PHRASE || k == &BREAKING_ARROW).then_some(*v))
-            .next()
+            .find_map(|(k, _, v)| (k == &BREAKING_PHRASE || k == &BREAKING_ARROW).then_some(*v))
             .or_else(|| breaking.then_some(description));
         let breaking = breaking_description.is_some();
         let footers: Result<Vec<_>, Error> = footers
@@ -204,7 +203,7 @@ pub enum FooterSeparator {
 }
 
 impl FooterSeparator {
-    /// Access `str` representation of FooterSeparator
+    /// Access `str` representation of `FooterSeparator`
     pub fn as_str(self) -> &'static str {
         match self {
             FooterSeparator::Value => ":",
@@ -467,7 +466,7 @@ mod test {
         ))
         .unwrap();
         assert_eq!(Type::FEAT, commit.type_());
-        assert_eq!("breaking change", commit.footers().get(0).unwrap().value());
+        assert_eq!("breaking change", commit.footers().first().unwrap().value());
         assert!(commit.breaking());
         assert_eq!(commit.breaking_description(), Some("breaking change"));
 
@@ -478,7 +477,7 @@ mod test {
         ))
         .unwrap();
         assert_eq!(Type::FIX, commit.type_());
-        assert_eq!("it's broken", commit.footers().get(0).unwrap().value());
+        assert_eq!("it's broken", commit.footers().first().unwrap().value());
         assert!(commit.breaking());
         assert_eq!(commit.breaking_description(), Some("it's broken"));
     }
@@ -594,7 +593,7 @@ Fixes: #123, #124, #125",
             )),
             commit.body()
         );
-        assert_eq!("Just kidding!", commit.footers().get(0).unwrap().value());
+        assert_eq!("Just kidding!", commit.footers().first().unwrap().value());
     }
 
     #[test]
