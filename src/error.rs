@@ -25,7 +25,9 @@ impl Error {
         err: winnow::error::ParseError<&str, winnow::error::ContextError>,
     ) -> Self {
         use winnow::error::StrContext;
-        use ErrorKind::*;
+        use ErrorKind::{
+            InvalidBody, InvalidFormat, InvalidScope, MissingDescription, MissingType,
+        };
 
         let mut kind = InvalidFormat;
         for context in err.inner().context() {
