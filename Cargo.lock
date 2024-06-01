@@ -22,9 +22,9 @@ dependencies = [
 
 [[package]]
 name = "indoc"
-version = "2.0.1"
+version = "2.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f2cb48b81b1dc9f39676bf99f5499babfec7cd8fe14307f7b3d747208fb5690"
+checksum = "b248f5224d1d606005e02c97f5aa4e88eeb230488bcc03bc9ca4d7991399f2b5"
 
 [[package]]
 name = "memchr"
@@ -72,9 +72,9 @@ dependencies = [
 
 [[package]]
 name = "serde_test"
-version = "1.0.163"
+version = "1.0.176"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "100168a8017b89fd4bcbeb8d857d95a8cfcbde829a7147c09cc82d3ab8d8cb41"
+checksum = "5a2f49ace1498612d14f7e0b8245519584db8299541dfe31a06374a828d620ab"
 dependencies = [
  "serde",
 ]
