@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## [0.12.7] - 2024-07-25
+
 ### Compatibility
 
 - Update MSRV to 1.74
@@ -148,7 +150,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixes
 
 <!-- next-url -->
-[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v0.12.6...HEAD
+[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v0.12.7...HEAD
+[0.12.7]: https://github.com/crate-ci/git-conventional/compare/v0.12.6...v0.12.7
 [0.12.6]: https://github.com/crate-ci/git-conventional/compare/v0.12.5...v0.12.6
 [0.12.5]: https://github.com/crate-ci/git-conventional/compare/v0.12.4...v0.12.5
 [0.12.4]: https://github.com/crate-ci/git-conventional/compare/v0.12.3...v0.12.4
