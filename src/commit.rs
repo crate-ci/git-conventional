@@ -125,13 +125,13 @@ impl fmt::Display for Commit<'_> {
         f.write_str(self.type_().as_str())?;
 
         if let Some(scope) = &self.scope() {
-            f.write_fmt(format_args!("({})", scope))?;
+            f.write_fmt(format_args!("({scope})"))?;
         }
 
         f.write_fmt(format_args!(": {}", &self.description()))?;
 
         if let Some(body) = &self.body() {
-            f.write_fmt(format_args!("\n\n{}", body))?;
+            f.write_fmt(format_args!("\n\n{body}"))?;
         }
 
         for footer in self.footers() {
@@ -240,8 +240,7 @@ impl FromStr for FooterSeparator {
             ":" => Ok(FooterSeparator::Value),
             " #" => Ok(FooterSeparator::Ref),
             _ => {
-                Err(Error::new(ErrorKind::InvalidFooter)
-                    .set_context(Box::new(format!("{:?}", sep))))
+                Err(Error::new(ErrorKind::InvalidFooter).set_context(Box::new(format!("{sep:?}"))))
             }
         }
     }
