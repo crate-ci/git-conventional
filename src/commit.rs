@@ -183,7 +183,7 @@ impl<'a> Footer<'a> {
     }
 }
 
-impl<'a> fmt::Display for Footer<'a> {
+impl fmt::Display for Footer<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { token, sep, value } = self;
         write!(f, "{token}{sep}{value}")
