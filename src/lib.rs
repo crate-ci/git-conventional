@@ -60,4 +60,6 @@ mod parser;
 pub use commit::{Commit, Footer, FooterSeparator, FooterToken, Scope, Type};
 pub use error::{Error, ErrorKind};
 
-doc_comment::doctest!("../README.md");
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
