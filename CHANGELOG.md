@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Internal
+
+- Removed a dependency
+
 ## [0.12.7] - 2024-07-25
 
 ### Compatibility
