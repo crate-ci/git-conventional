@@ -8,9 +8,8 @@ use winnow::combinator::repeat;
 use winnow::combinator::trace;
 use winnow::combinator::{cut_err, eof, fail, opt, peek};
 use winnow::combinator::{delimited, preceded, terminated};
-use winnow::error::{AddContext, ErrMode, ErrorKind, ParserError, StrContext};
+use winnow::error::{AddContext, ErrMode, ParserError, StrContext};
 use winnow::prelude::*;
-use winnow::stream::Stream as _;
 use winnow::token::{take, take_till, take_while};
 
 type CommitDetails<'a> = (
@@ -27,7 +26,7 @@ pub(crate) fn parse<
     E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
 >(
     i: &mut &'a str,
-) -> PResult<CommitDetails<'a>, E> {
+) -> ModalResult<CommitDetails<'a>, E> {
     message.parse_next(i)
 }
 
@@ -59,7 +58,7 @@ fn is_whitespace(c: char) -> bool {
 
 fn whitespace<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     take_while(0.., is_whitespace).parse_next(i)
 }
 
@@ -71,7 +70,7 @@ pub(crate) fn message<
     E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
 >(
     i: &mut &'a str,
-) -> PResult<CommitDetails<'a>, E> {
+) -> ModalResult<CommitDetails<'a>, E> {
     trace("message", move |i: &mut &'a str| {
         let summary =
             terminated(trace("summary", summary), alt((line_ending, eof))).parse_next(i)?;
@@ -101,7 +100,7 @@ pub(crate) fn type_<
     E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
 >(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     trace(
         "type",
         take_while(1.., |c: char| {
@@ -120,7 +119,7 @@ pub(crate) fn scope<
     E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
 >(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     trace(
         "scope",
         take_while(1.., |c: char| !is_line_ending(c) && !is_parens(c))
@@ -137,7 +136,7 @@ pub(crate) const SCOPE: &str = "scope";
 #[allow(clippy::type_complexity)]
 fn summary<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
-) -> PResult<(&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
+) -> ModalResult<(&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
     trace(
         "summary",
         (
@@ -160,17 +159,17 @@ pub(crate) const DESCRIPTION: &str = "description";
 // <text>            ::= <any UTF8-octets except newline>*
 fn text<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     trace("text", take_till(1.., is_line_ending)).parse_next(i)
 }
 
 fn body<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     trace("body", move |i: &mut &'a str| {
         if i.is_empty() {
             let start = i.checkpoint();
-            let err = E::from_error_kind(i, ErrorKind::Eof);
+            let err = E::from_input(i);
             let err = err.add_context(i, &start, StrContext::Label(BODY));
             return Err(ErrMode::Backtrack(err));
         }
@@ -179,7 +178,7 @@ fn body<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt
         let mut prior_is_empty = true;
         for line in crate::lines::LinesWithTerminator::new(i) {
             if prior_is_empty
-                && peek::<_, _, E, _>((token, separator))
+                && peek::<_, _, ErrMode<E>, _>((token, separator))
                     .parse_peek(line.trim_end())
                     .is_ok()
             {
@@ -203,7 +202,7 @@ pub(crate) const BODY: &str = "body";
 // <footer>          ::= <token>, <separator>, <whitespace>*, <value>
 fn footer<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
-) -> PResult<(&'a str, &'a str, &'a str), E> {
+) -> ModalResult<(&'a str, &'a str, &'a str), E> {
     trace(
         "footer",
         (token, separator, whitespace, value).map(|(ft, s, _, fv)| (ft, s, fv)),
@@ -218,14 +217,14 @@ pub(crate) fn token<
     E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
 >(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     trace("token", alt(("BREAKING CHANGE", type_))).parse_next(i)
 }
 
 // <separator>       ::= ":" | " #"
 fn separator<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     trace("sep", alt((":", " #"))).parse_next(i)
 }
 
@@ -234,10 +233,10 @@ pub(crate) fn value<
     E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
 >(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     if i.is_empty() {
         let start = i.checkpoint();
-        let err = E::from_error_kind(i, ErrorKind::Eof);
+        let err = E::from_input(i);
         let err = err.add_context(i, &start, StrContext::Label("value"));
         return Err(ErrMode::Cut(err));
     }
@@ -245,7 +244,7 @@ pub(crate) fn value<
     let mut offset = 0;
     for (i, line) in crate::lines::LinesWithTerminator::new(i).enumerate() {
         if 0 < i
-            && peek::<_, _, E, _>((token, separator))
+            && peek::<_, _, ErrMode<E>, _>((token, separator))
                 .parse_peek(line.trim_end())
                 .is_ok()
         {
@@ -263,7 +262,7 @@ fn exclamation_mark<
     E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug,
 >(
     i: &mut &'a str,
-) -> PResult<&'a str, E> {
+) -> ModalResult<&'a str, E> {
     "!".context(StrContext::Label(BREAKER)).parse_next(i)
 }
 
