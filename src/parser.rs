@@ -10,7 +10,6 @@ use winnow::combinator::{cut_err, eof, fail, opt, peek};
 use winnow::combinator::{delimited, preceded, terminated};
 use winnow::error::{AddContext, ErrMode, ParserError, StrContext};
 use winnow::prelude::*;
-use winnow::stream::Stream as _;
 use winnow::token::{take, take_till, take_while};
 
 type CommitDetails<'a> = (
@@ -179,7 +178,7 @@ fn body<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt
         let mut prior_is_empty = true;
         for line in crate::lines::LinesWithTerminator::new(i) {
             if prior_is_empty
-                && peek::<_, _, E, _>((token, separator))
+                && peek::<_, _, ErrMode<E>, _>((token, separator))
                     .parse_peek(line.trim_end())
                     .is_ok()
             {
@@ -245,7 +244,7 @@ pub(crate) fn value<
     let mut offset = 0;
     for (i, line) in crate::lines::LinesWithTerminator::new(i).enumerate() {
         if 0 < i
-            && peek::<_, _, E, _>((token, separator))
+            && peek::<_, _, ErrMode<E>, _>((token, separator))
                 .parse_peek(line.trim_end())
                 .is_ok()
         {
