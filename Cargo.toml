@@ -130,6 +130,7 @@ pre-release-replacements = [
 winnow = "0.7.0"
 unicase = "2.5"
 serde = { version = "1.0.163", optional = true, features = ["derive"] }
+schemars = { version = "1.0.4", optional = true }
 
 [dev-dependencies]
 indoc = "2.0"

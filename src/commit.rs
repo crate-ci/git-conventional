@@ -15,6 +15,7 @@ const BREAKING_ARROW: &str = "BREAKING-CHANGE";
 
 /// A conventional commit.
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Commit<'a> {
     ty: Type<'a>,
@@ -149,6 +150,7 @@ impl fmt::Display for Commit<'_> {
 ///
 /// See: <https://git-scm.com/docs/git-interpret-trailers>
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Footer<'a> {
     token: FooterToken<'a>,
@@ -192,6 +194,7 @@ impl fmt::Display for Footer<'_> {
 
 /// The type of separator between the footer token and value.
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum FooterSeparator {
@@ -251,7 +254,11 @@ macro_rules! unicase_components {
         $(
             /// A component of the conventional commit.
             #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-            pub struct $ty<'a>(unicase::UniCase<&'a str>);
+            #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+            pub struct $ty<'a>(
+                #[cfg_attr(feature = "schemars", schemars(with = "String"))]
+                unicase::UniCase<&'a str>
+            );
 
             impl<'a> $ty<'a> {
                 /// See `parse` for ensuring the data is valid.
