@@ -4,8 +4,8 @@ use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
 
-use winnow::error::ContextError;
 use winnow::Parser;
+use winnow::error::ContextError;
 
 use crate::parser::parse;
 use crate::{Error, ErrorKind};
