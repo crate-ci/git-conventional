@@ -24,10 +24,10 @@ impl Error {
         commit: &str,
         err: winnow::error::ParseError<&str, winnow::error::ContextError>,
     ) -> Self {
-        use winnow::error::StrContext;
         use ErrorKind::{
             InvalidBody, InvalidFormat, InvalidScope, MissingDescription, MissingType,
         };
+        use winnow::error::StrContext;
 
         let mut kind = InvalidFormat;
         for context in err.inner().context() {
