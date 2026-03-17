@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+## [1.1.0] - 2026-03-17
+
 ### Compatibility
 
 - Update MSRV to 1.85
@@ -172,7 +174,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixes
 
 <!-- next-url -->
-[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/crate-ci/git-conventional/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/crate-ci/git-conventional/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/crate-ci/git-conventional/compare/v0.12.9...v1.0.0
 [0.12.9]: https://github.com/crate-ci/git-conventional/compare/v0.12.8...v0.12.9
 [0.12.8]: https://github.com/crate-ci/git-conventional/compare/v0.12.7...v0.12.8
