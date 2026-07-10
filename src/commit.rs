@@ -128,7 +128,7 @@ impl fmt::Display for Commit<'_> {
             f.write_fmt(format_args!("({scope})"))?;
         }
 
-        f.write_fmt(format_args!(": {}", &self.description()))?;
+        f.write_fmt(format_args!(": {}", self.description()))?;
 
         if let Some(body) = &self.body() {
             f.write_fmt(format_args!("\n\n{body}"))?;
