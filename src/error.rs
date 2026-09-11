@@ -115,18 +115,16 @@ pub enum ErrorKind {
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            ErrorKind::MissingType => {
-                "Missing type in the commit summary, expected `type: description`"
-            }
-            ErrorKind::InvalidScope => {
+            Self::MissingType => "Missing type in the commit summary, expected `type: description`",
+            Self::InvalidScope => {
                 "Incorrect scope syntax in commit summary, expected `type(scope): description`"
             }
-            ErrorKind::MissingDescription => {
+            Self::MissingDescription => {
                 "Missing description in commit summary, expected `type: description`"
             }
-            ErrorKind::InvalidBody => "Incorrect body syntax",
-            ErrorKind::InvalidFooter => "Incorrect footer syntax",
-            ErrorKind::InvalidFormat => "Incorrect conventional commit format",
+            Self::InvalidBody => "Incorrect body syntax",
+            Self::InvalidFooter => "Incorrect footer syntax",
+            Self::InvalidFormat => "Incorrect conventional commit format",
         };
         f.write_str(s)
     }
