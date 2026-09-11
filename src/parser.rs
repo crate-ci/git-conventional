@@ -1,5 +1,3 @@
-#![allow(clippy::let_unit_value)] // for clarify and to ensure the right type is selected
-
 use std::str;
 
 use winnow::ascii::line_ending;
@@ -133,7 +131,7 @@ pub(crate) const SCOPE: &str = "scope";
 // /* "!" should be added to the AST as a <breaking-change> node with the value "!" */
 // <summary>         ::= <type>, "(", <scope>, ")", ["!"], ":", <whitespace>*, <text>
 //                    |  <type>, ["!"], ":", <whitespace>*, <text>
-#[allow(clippy::type_complexity)]
+#[expect(clippy::type_complexity, reason = "not worth abstracting")]
 fn summary<'a, E: ParserError<&'a str> + AddContext<&'a str, StrContext> + std::fmt::Debug>(
     i: &mut &'a str,
 ) -> ModalResult<(&'a str, Option<&'a str>, Option<&'a str>, &'a str), E> {
@@ -269,7 +267,6 @@ fn exclamation_mark<
 pub(crate) const BREAKER: &str = "exclamation_mark";
 
 #[cfg(test)]
-#[allow(clippy::non_ascii_literal)]
 mod tests {
     use super::*;
 

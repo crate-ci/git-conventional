@@ -206,8 +206,8 @@ impl FooterSeparator {
     /// Access `str` representation of `FooterSeparator`
     pub fn as_str(self) -> &'static str {
         match self {
-            FooterSeparator::Value => ":",
-            FooterSeparator::Ref => " #",
+            Self::Value => ":",
+            Self::Ref => " #",
         }
     }
 }
@@ -237,8 +237,8 @@ impl FromStr for FooterSeparator {
 
     fn from_str(sep: &str) -> Result<Self, Self::Err> {
         match sep {
-            ":" => Ok(FooterSeparator::Value),
-            " #" => Ok(FooterSeparator::Ref),
+            ":" => Ok(Self::Value),
+            " #" => Ok(Self::Ref),
             _ => {
                 Err(Error::new(ErrorKind::InvalidFooter).set_context(Box::new(format!("{sep:?}"))))
             }
@@ -313,23 +313,23 @@ impl<'a> Type<'a> {
 /// Common commit types
 impl Type<'static> {
     /// Commit type when introducing new features (correlates with `minor` in semver)
-    pub const FEAT: Type<'static> = Type::new_unchecked("feat");
+    pub const FEAT: Self = Type::new_unchecked("feat");
     /// Commit type when patching a bug (correlates with `patch` in semver)
-    pub const FIX: Type<'static> = Type::new_unchecked("fix");
+    pub const FIX: Self = Type::new_unchecked("fix");
     /// Possible commit type when reverting changes.
-    pub const REVERT: Type<'static> = Type::new_unchecked("revert");
+    pub const REVERT: Self = Type::new_unchecked("revert");
     /// Possible commit type for changing documentation.
-    pub const DOCS: Type<'static> = Type::new_unchecked("docs");
+    pub const DOCS: Self = Type::new_unchecked("docs");
     /// Possible commit type for changing code style.
-    pub const STYLE: Type<'static> = Type::new_unchecked("style");
+    pub const STYLE: Self = Type::new_unchecked("style");
     /// Possible commit type for refactoring code structure.
-    pub const REFACTOR: Type<'static> = Type::new_unchecked("refactor");
+    pub const REFACTOR: Self = Type::new_unchecked("refactor");
     /// Possible commit type for performance optimizations.
-    pub const PERF: Type<'static> = Type::new_unchecked("perf");
+    pub const PERF: Self = Type::new_unchecked("perf");
     /// Possible commit type for addressing tests.
-    pub const TEST: Type<'static> = Type::new_unchecked("test");
+    pub const TEST: Self = Type::new_unchecked("test");
     /// Possible commit type for other things.
-    pub const CHORE: Type<'static> = Type::new_unchecked("chore");
+    pub const CHORE: Self = Type::new_unchecked("chore");
 }
 
 impl<'a> Scope<'a> {
